@@ -1,0 +1,7 @@
+self and super refer to the receiver of a message within a method 
+activated in response to that message, but sends to super are 
+looked up in the superclass of the method's defining class rather 
+than the class of the receiver, which allows methods in the 
+subclass to invoke methods of the same name in the superclass. 
+
+

@@ -1,0 +1,38 @@
+0. Find out where the hell execution starts
+
+1. Check that the program is called correctly
+	a. verify that the command was 
+	(1) (2) (3) 
+	1: /path/to/gst hzip.st 	//not in args list
+	2: ./hzip.st			//not in args list
+	3: -((c XOR u) OR d OR t)	
+	4: input file
+	5: output file OR nothing
+
+BUILD A HUFFMAN TREE
+A Huffman tree in a binary tree with two types of nodes:
+* non-leaf nodes, which store
+	the number of letters in all of their leaves
+	a pointer to their parent node
+	a pointer to their left child
+	a pointer to their right child
+* leaf nodes, which store
+	a letter
+	the number of times that letter has been seen
+	a pointer to the parent node
+
+
+2. Read in a file and make a frequency table
+
+3. do part C to construct the Huffman Tree
+
+
+pseudocode
+#check for valid input
+	if options aren't valid
+		ObjectMemory quit: status.	
+	try to open files
+	if opening fails
+		ObjectMemory quit: status.
+
+

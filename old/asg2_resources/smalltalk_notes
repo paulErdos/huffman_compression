@@ -1,0 +1,20 @@
+self and super refer to the receiver of a message within a method 
+activated in response to that message, but sends to super are 
+looked up in the superclass of the method's defining class rather 
+than the class of the receiver, which allows methods in the 
+subclass to invoke methods of the same name in the superclass. 
+
+========================================================================
+Classes
+========================================================================
+
+"To create a new class"
+
+superclass-name subclass: new-subclass-name [
+	| instance-variable1 instance-variable2 |  "same syntax as method temporary variables"
+	pragmas "preprocessor stuff, probably not necessary"
+	message-pattern-1 [ method statements ] 
+	message-pattern-2 [ method statements ] 
+	class-variable-1 := expression.
+	class-variable-2 := expression.
+]

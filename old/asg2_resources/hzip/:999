@@ -1,0 +1,334 @@
+#!/afs/cats.ucsc.edu/courses/cmps112-wm/usr/smalltalk/bin/gst -f
+nl := Character nl.
+
+"=====================================================================
+  Classes, extensions. Skip to line 135 to bypass this section.
+ ===================================================================="
+
+Character extend [
+   isPrint [
+      ^ (Character space <= self) & (self <= $~)
+   ]
+   visible [
+      self isPrint ifTrue: [^ '$', self asString]
+                   ifFalse: [^ self asInteger printStringRadix: 8]
+   ]
+]
+
+Object subclass: ZeroArray [
+   |theArray|
+
+   ZeroArray class >> new [
+      self shouldNotImplement.
+   ]
+
+   ZeroArray class >> new: size [
+      |result|
+      result := super new.
+      result init: size.
+      ^ result
+   ]
+
+   init: size [
+      theArray := Array new: size.
+   ]
+
+   size [
+      ^ theArray size.
+   ]
+
+   at: index [
+      ^ theArray at: index + 1.
+   ]
+
+   at: index put: value [
+      ^ theArray at: index + 1 put: value.
+   ]
+
+   incr: index [
+      (self at: index) isNil
+         ifTrue: [ self at: index put: 0].
+      self at: index put: (self at: index) + 1.
+   ]
+
+   keysAndValuesDo: aBlock [
+      (0 to: (self size) - 1) do: [:index |
+         aBlock value: index value: (self at: index).
+      ]
+   ]
+]
+
+Object subclass: EncodingTableElement [
+	|char count code|
+	char [ ^ char ]
+        count [ ^ count ]
+	code [ ^ code ]
+
+	EncodingTableElement class >> new [
+	self shouldNotImplement
+   	]
+
+
+   EncodingTableElement class >> new: aChar count: aCount code: aCode [
+      |result|
+      result := super new.
+      result setChar: aChar andCount: aCount andCode: aCode.
+      ^result
+   ]
+
+   setChar: aChar andCount: aCount andCode: aCode [
+      char := aChar.
+      count := aCount.
+      code := aCode.
+   ]
+
+   "unmodified"
+   <= other [
+      ^ (count < other count)
+      | ((count = other count) & (char <= other char))
+   ]
+
+   printBase: aStream [
+      ^ aStream << self class << '(' << char << ',' << count << ',' << code
+   ]
+
+   printOn: aStream [
+      (self printBase: aStream) << ')'.
+   ]
+
+   inorder: visitor prefix: string [
+      visitor value: char value: string.
+   ]
+
+]
+
+Object subclass: Leaf [
+   |char count|
+   char [ ^ char ]
+   count [ ^ count ]
+
+   Leaf class >> new [
+      self shouldNotImplement
+   ]
+
+   Leaf class >> new: aChar count: aCount [
+      |result|
+      result := super new.
+      result setChar: aChar andCount: aCount.
+      ^result
+   ]
+
+   setChar: aChar andCount: aCount [
+      char := aChar.
+      count := aCount.
+   ]
+
+   <= other [
+      ^ (count < other count)
+      | ((count = other count) & (char <= other char))
+   ]
+
+   printBase: aStream [
+      ^ aStream << self class << '(' << char << ',' << count
+   ]
+
+   printOn: aStream [
+      (self printBase: aStream) << ')'.
+   ]
+
+   inorder: visitor prefix: string [
+      visitor value: char value: string.
+   ]
+
+]
+
+Leaf subclass: Tree [
+   |left right|
+
+   Tree class >> new: aChar count: aCount [
+      self shouldNotImplement
+   ]
+
+   Tree class >> new: aChar count: aCount left: aLeft right: aRight [
+      |result|
+      result := super new: aChar count: aCount.
+      result setLeft: aLeft andRight: aRight.
+      ^ result
+   ]
+
+   <= other [
+      ^ (count < other count)
+      | ((count = other count) & (left char <= other char))
+   ]
+
+   setLeft: aLeft andRight: aRight [
+      left := aLeft.
+      right := aRight.
+   ]
+
+   printOn: aStream [
+      (self printBase: aStream) << ',' << left << ',' << right << ')'.
+   ]
+
+   inorder: visitor prefix: string [
+      left inorder: visitor prefix: string, '0'.
+      right inorder: visitor prefix: string, '1'.
+   ]
+
+]
+
+"Variable declarations"
+compress := 0.
+uncompress := 0.
+print_table := 0.
+debug := 0.
+
+"Parse arguments and die if necessary"
+"Handle more pathological input later:
+1. Multiple options
+2. Invalid option
+3. first argument doesn't start with a '-'
+4. 
+"
+stdout << 'PARSE ARGUMENTS' << nl.
+
+Smalltalk arguments inspect.
+argsize := Smalltalk arguments size.
+stdout << argsize << nl.
+
+argsize < 2 ifTrue: [
+	stdout << 'Program called improperly. Quitting!.' << nl.
+	ObjectMemory quit: 1.
+].
+argsize > 3 ifTrue: [
+        stdout << 'Program called improperly. Quitting!.' << nl.
+        ObjectMemory quit: 1.
+].
+
+"set flags"
+"Ideas for improvement:
+1. put all of the options in a table so that they're not so messily dealt with
+2.
+"
+opt := Smalltalk arguments at: 1.
+valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') | 
+                (opt sameAs: '-t')|(opt sameAs: '-d').
+valid_option ifTrue: [ stdout << 'Option is valid' << nl. ].
+valid_option ifFalse: [ 
+	stdout << 'fucking evil nonsense options. Quitting!' << nl. 
+	ObjectMemory quit: 1.
+].
+
+(opt sameAs: '-c') ifTrue: [ compress := 1. ].
+(opt sameAs: '-u') ifTrue: [ uncompress := 1. ].
+(opt sameAs: '-t') ifTrue: [ print_table := 1. ].
+(opt sameAs: '-d') ifTrue: [ debug := 1. ].
+
+(compress == 1) 	ifTrue: [ stdout << 'we are compressing' << nl. ]
+			ifFalse: [ stdout << 'we are not compressing' << nl. ].
+(uncompress == 1)	ifTrue: [ stdout << 'we are uncompressing' << nl. ]
+                	ifFalse: [ stdout << 'we are not uncompressing' << nl. ].
+(debug == 1) 		ifTrue: [ stdout << 'we are debugging' << nl. ]
+                	ifFalse: [ stdout << 'we are not debugging' << nl. ].
+(print_table == 1) 	ifTrue: [ stdout << 'we are printing the tree' << nl. ]
+                	ifFalse: [ stdout << 'we are not printing the tree' << nl. ].
+
+"open file for reading and read it into a variable"
+"Unmet requirements:
+1. Catch case in which the file won't open (e.g., a bogus file)
+   Check out catfile.st
+"
+filename := Smalltalk arguments at: 2.
+infile := FileStream open: filename mode: FileStream read.
+"Build the frequency table"
+"add entry 256 with a count of 1 to indicate EoF
+ because it's zero-indexed, entry 256 is indexed by 255"
+freqtable := ZeroArray new: 256.
+[infile atEnd not] whileTrue: [
+   |ordChar|
+   ordChar := infile next asInteger.
+   freqtable incr: ordChar.
+].
+freqtable at: 255 put: 1.
+
+"print the freqtable"
+freqtable keysAndValuesDo: [:key :value |
+   (value notNil and: [value > 0]) ifTrue: [
+      stdout << 'freq[' << key asCharacter visible << ']=' << value         << nl.
+   ]
+].
+freqtable inspect.
+
+"Iterate over the frequency table. For each nonzero element create a 
+leaf node and insert that node into a SortedCollection."
+sortcol := SortedCollection new.
+
+freqtable keysAndValuesDo: [:key :value |
+   (value notNil and: [value > 0]) ifTrue: [
+	sortcol add: (Leaf new: key count: value).    
+   ]
+].
+n_nonzero_entries := sortcol size.
+
+sortcol inspect.
+
+[sortcol size > 1] whileTrue: [
+	first := sortcol removeFirst.
+	second := sortcol removeFirst.
+	
+	"smaller count becomes left child"
+        sum := (first count) + (second count).
+	first_char := first char.
+	second_char := second char.
+	(first count) <= (second count) ifTrue: [ sortcol add: (Tree new: first_char count: sum left: first right: second) ].
+	(first count) > (second count) ifTrue: [ sortcol add: (Tree new: second_char count: sum left: second right: first) ].
+	
+].
+
+sortcol inspect.
+
+
+"Build the encoding table"
+"The table will be a sortcol of leaves."
+t := sortcol removeFirst.
+encoding_strings := SortedCollection new.
+t inorder: [:char :string |
+	"this order used to sort by char"
+	leaf := Leaf new: string count: char.
+	encoding_strings add: leaf.
+] prefix: ''.
+
+(debug = 1) ifTrue: [ encoding_strings inspect ].
+
+"print the encoding table"
+"col1: character, printable if possibl, int if not
+ col2: frequency
+ col3: encoding string
+ Format should be identical to 
+  '%3d, %5d, %s' in C. 
+   %nk means: 'print k using at least n characters. Pad the front with whitespace to make the quota'
+"
+"Unmet reqs: 
+1. make the format nice
+"
+"maybe I should extend leaf to make an encoding element"
+stdout << 'testing enc strings loop' << nl.
+encoding_strings do: [:item| 
+	current_char := item char asCharacter.
+	current_
+	stdout << item << nl 
+].
+
+"stuff to copy/paste"
+stdout << 'print_table: ' 
+(print_table = 1) ifTrue: [ stdout << 'True' << nl ]
+		 ifFalse: [ stdout << 'False' << nl ].
+stdout << 'debug: '
+(debug = 1) ifTrue: [ stdout << 'True' << nl ]
+            ifFalse: [ stdout << 'False' << nl ].
+stdout << 'uncompress: '
+(uncompress = 1) ifTrue: [ stdout << 'True' << nl ]
+            ifFalse: [ stdout << 'False' << nl ].
+stdout << 'compress: '
+(compress = 1) ifTrue: [ stdout << 'True' << nl ]
+            ifFalse: [ stdout << 'False' << nl ].
