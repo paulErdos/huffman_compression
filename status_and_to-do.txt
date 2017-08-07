@@ -1,0 +1,6 @@
+1. Inserting cmdline.st. 
+   * To do next:
+     - Learn how to iterate over an array or list
+     - Learn how conditionals work
+     - Write a thing that iterates over the list and, as it encounters valid
+       args, sets corresponding flag variables.
