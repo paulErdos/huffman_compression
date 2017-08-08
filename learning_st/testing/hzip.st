@@ -39,7 +39,7 @@ do: [:opt :arg |
 ]
 ifError: [
    'Error: invalid option' displayNl.
-   '--foo'
+"   '--foo'""this line appears to do nothing."
 ]
 
 '$RCSfile: cmdline.st,v $' display.
