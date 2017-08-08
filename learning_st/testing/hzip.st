@@ -30,7 +30,7 @@ do: [:argi |
    '"' displayNl.
 ].
 
-Smalltalk arguments: '-a -b --foo --bar'
+Smalltalk arguments: '-d -c -t -u -a -b --foo --bar'
 do: [:opt :arg |
    'arguments:do: ' display.
    opt display.
