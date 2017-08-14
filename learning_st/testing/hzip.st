@@ -11,27 +11,37 @@ stdout << 'version: ' << Smalltalk version << nl.
 stdout << 'hostSystem: ' << Smalltalk hostSystem << nl."
 
 "stdout << 'arguments: ' << Smalltalk arguments << nl."
-
+"
 (1 to: Smalltalk arguments size)
 do: [:index |
     'argument[' display.
     index display.
-    '] = "' display.
+    '] = ""' display.
     (Smalltalk arguments at: index) display.
-    '"' displayNl.
+    '""' displayNl.
 ].
 
 (1 to: Smalltalk getArgc)
 do: [:argi |
    'argv[' display.
    argi display.
-   '] = "' display.
+   '] = ""' display.
    (Smalltalk getArgv: argi) display.
-   '"' displayNl.
+   '""' displayNl.
 ].
+"
 
+"Here is what's going on in the following block."
+" https://www.gnu.org/software/smalltalk/manual-base/html_node/SystemDictionary_002dcommand_002dline.html"
+
+""
+options := Dictionary new.
 Smalltalk arguments: '-d -c -t -u -a -b --foo --bar'
 do: [:opt :arg |
+   (opt = d) displayNl.
+   opt displayNl.
+   opt = 'd' ifFalse: ['debug opt not set' displayNl].
+   opt = '-d' ifFalse: ['debug opt not set' displayNl].
    'arguments:do: ' display.
    opt display.
    ' ' display.
