@@ -10,7 +10,7 @@ nl := Character nl.
 stdout << 'version: ' << Smalltalk version << nl.
 stdout << 'hostSystem: ' << Smalltalk hostSystem << nl."
 
-stdout << 'arguments: ' << Smalltalk arguments << nl.
+"stdout << 'arguments: ' << Smalltalk arguments << nl."
 
 (1 to: Smalltalk arguments size)
 do: [:index |
