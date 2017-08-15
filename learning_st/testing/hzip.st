@@ -31,6 +31,8 @@ do: [:argi |
 ].
 "
 
+" ARGUMENTS "
+
 "Here is what's going on in the following block."
 " https://www.gnu.org/software/smalltalk/manual-base/html_node/SystemDictionary_002dcommand_002dline.html"
 
@@ -56,4 +58,13 @@ ifError: [
 'finished.' displayNl.
 
 "TEST: cmdline.st foo bar baz"
+
+
+" FILE INPUT "
+execname := 'filein.st'.
+stdout << 'Starting ' << execname << '.'; nl.
+FileStream fileIn: 'tree.st'.
+stdout << 'Finished ' << execname << '.'; nl.
+
+"TEST: filein.st"
 
