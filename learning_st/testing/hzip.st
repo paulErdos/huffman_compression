@@ -1,70 +1,106 @@
 #!/afs/cats.ucsc.edu/courses/cmps112-wm/usr/smalltalk/bin/gst -f
 
-" Parse command line arguments "
-
-"execname := '$RCSfile: cmdline.st,v $' =~ '.*: (.*),v.*' at: 1."
-
 nl := Character nl.
 
-"stdout << 'execname: ' << execname << nl.
-stdout << 'version: ' << Smalltalk version << nl.
-stdout << 'hostSystem: ' << Smalltalk hostSystem << nl."
-
-"stdout << 'arguments: ' << Smalltalk arguments << nl."
 "
-(1 to: Smalltalk arguments size)
-do: [:index |
-    'argument[' display.
-    index display.
-    '] = ""' display.
-    (Smalltalk arguments at: index) display.
-    '""' displayNl.
-].
-
-(1 to: Smalltalk getArgc)
-do: [:argi |
-   'argv[' display.
-   argi display.
-   '] = ""' display.
-   (Smalltalk getArgv: argi) display.
-   '""' displayNl.
-].
+Object editing
 "
 
-" ARGUMENTS "
+Object subclass: ZeroArray [
+   |theArray|
 
-"Here is what's going on in the following block."
-" https://www.gnu.org/software/smalltalk/manual-base/html_node/SystemDictionary_002dcommand_002dline.html"
+   ZeroArray class >> new [
+      self shouldNotImplement.
+   ]
 
-""
-options := Dictionary new.
-Smalltalk arguments: '-d -c -t -u -a -b --foo --bar'
-do: [:opt :arg |
-   (opt = d) displayNl.
-   opt displayNl.
-   opt = 'd' ifFalse: ['debug opt not set' displayNl].
-   opt = '-d' ifFalse: ['debug opt not set' displayNl].
-   'arguments:do: ' display.
-   opt display.
-   ' ' display.
-   arg displayNl.
+   ZeroArray class >> new: size [
+      |result|
+      result := super new.
+      result init: size.
+      ^ result
+   ]
+
+   init: size [
+      theArray := Array new: size.
+   ]
+
+   size [
+      ^ theArray size.
+   ]
+
+   at: index [
+      ^ theArray at: index + 1.
+   ]
+
+   at: index put: value [
+      ^ theArray at: index + 1 put: value.
+   ]
+
+   incr: index [
+      (self at: index) isNil
+         ifTrue: [ self at: index put: 0].
+      self at: index put: (self at: index) + 1.
+   ]
+
+   keysAndValuesDo: aBlock [
+      (0 to: (self size) - 1) do: [:index |
+         aBlock value: index value: (self at: index).
+      ]
+   ]
 ]
-ifError: [
-   'Error: invalid option' displayNl.
-"   '--foo'""this line appears to do nothing."
-]
 
-'$RCSfile: cmdline.st,v $' display.
-'finished.' displayNl.
+" Verify program called correctly. "
 
-"TEST: cmdline.st foo bar baz"
+"check for proper number of arguments"
+argsize := Smalltalk arguments size.
+argsize < 2 ifTrue: [
+    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+argsize > 3 ifTrue: [
+        stdout << 'Program called improperly. Quitting!.' << nl.
+        ObjectMemory quit: 1.
+].
 
+" Parse command line arguments "
+
+opt := Smalltalk arguments at: 1.
+valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
+                (opt sameAs: '-t') | (opt sameAs: '-d').
+valid_option ifFalse: [
+    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+
+(opt sameAs: '-c') ifTrue: [ compress := 1. ].
+(opt sameAs: '-u') ifTrue: [ uncompress := 1. ].
+(opt sameAs: '-t') ifTrue: [ print_table := 1. ].
+(opt sameAs: '-d') ifTrue: [ debug := 1. ].
 
 " FILE INPUT "
-execname := 'filein.st'.
-stdout << 'Starting ' << execname << '.'; nl.
-FileStream fileIn: 'tree.st'.
-stdout << 'Finished ' << execname << '.'; nl.
 
-"TEST: filein.st"
+"open file"
+filename := Smalltalk arguments at: 2.
+infile := FileStream open: filename mode: FileStream read.
 
+"build the frequency table"
+freqtable := ZeroArray new: 256.
+[infile atEnd not] whileTrue: [
+   |ordChar|
+   ordChar := infile next asInteger.
+   freqtable incr: ordChar.
+].
+
+"add entry 256 with a count of 1 to indicate EoF.
+ because it's zero-indexed, entry 256 is indexed by 255"
+freqtable at: 255 put: 1.
+
+"debug: print the freqtable"
+(debug = 1) ifTrue: [
+   freqtable keysAndValuesDo: [:key :value |
+      (value notNil and: [value > 0]) ifTrue: [
+         stdout << 'freq[' << key asCharacter visible << ']=' << value         << nl.
+      ]
+   ].
+   freqtable inspect.
+].
