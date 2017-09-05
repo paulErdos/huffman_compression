@@ -6,6 +6,16 @@ nl := Character nl.
 Object editing
 "
 
+Character extend [
+   isPrint [
+      ^ (Character space <= self) & (self <= $~)
+   ]
+   visible [
+      self isPrint ifTrue: [^ self asString]
+                   ifFalse: [^ self asInteger printStringRadix: 8]
+   ]
+]
+
 Object subclass: ZeroArray [
    |theArray|
 
@@ -58,8 +68,8 @@ argsize < 2 ifTrue: [
     ObjectMemory quit: 1.
 ].
 argsize > 3 ifTrue: [
-        stdout << 'Program called improperly. Quitting!.' << nl.
-        ObjectMemory quit: 1.
+    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
 ].
 
 " Parse command line arguments "
@@ -99,7 +109,7 @@ freqtable at: 255 put: 1.
 (debug = 1) ifTrue: [
    freqtable keysAndValuesDo: [:key :value |
       (value notNil and: [value > 0]) ifTrue: [
-         stdout << 'freq[' << key asCharacter visible << ']=' << value         << nl.
+         stdout << 'freq[' << key asCharacter visible << '] = ' << value         << nl.
       ]
    ].
    freqtable inspect.
