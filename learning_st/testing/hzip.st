@@ -109,8 +109,145 @@ freqtable at: 255 put: 1.
 (debug = 1) ifTrue: [
    freqtable keysAndValuesDo: [:key :value |
       (value notNil and: [value > 0]) ifTrue: [
-         stdout << 'freq[' << key asCharacter visible << '] = ' << value         << nl.
+         stdout << 'freq[' << key asCharacter visible << '] = ' << value << nl.
       ]
    ].
-   freqtable inspect.
+"   freqtable inspect."
 ].
+
+"3b."
+
+Object subclass: Leaf [
+   |char count|
+   char [ ^ char ]
+   count [ ^ count ]
+
+   Leaf class >> new [
+      self shouldNotImplement
+   ]
+
+   Leaf class >> new: aChar count: aCount [
+      |result|
+      result := super new.
+      result setChar: aChar andCount: aCount.
+      ^result
+   ]
+
+   setChar: aChar andCount: aCount [
+      char := aChar.
+      count := aCount.
+   ]
+
+   <= other [
+      ^ (count < other count)
+      | ((count = other count) & (char <= other char))
+   ]
+
+   printBase: aStream [
+      ^ aStream << self class << '(' << char << ',' << count
+   ]
+
+   printOn: aStream [
+      (self printBase: aStream) << ')'.
+   ]
+
+   inorder: visitor prefix: string [
+      visitor value: char value: string.
+   ]
+
+]
+
+Leaf subclass: Tree [
+   |left right|
+
+   Tree class >> new: aChar count: aCount [
+      self shouldNotImplement
+   ]
+
+   Tree class >> new: aChar count: aCount left: aLeft right: aRight [
+      |result|
+      result := super new: aChar count: aCount.
+      result setLeft: aLeft andRight: aRight.
+      ^ result
+   ]
+
+   setLeft: aLeft andRight: aRight [
+      left := aLeft.
+      right := aRight.
+   ]
+
+   printOn: aStream [
+      (self printBase: aStream) << ',' << left << ',' << right << ')'.
+   ]
+
+   inorder: visitor prefix: string [
+      left inorder: visitor prefix: string, '0'.
+      right inorder: visitor prefix: string, '1'.
+   ]
+
+]
+
+"Iterate over the freqtable"
+sortcol := SortedCollection new.
+
+
+" and for each non-zero element, create a leaf
+  node with a character and a count, and insert that leaf node into
+  a priority queue.
+"
+
+freqtable keysAndValuesDo: [:key :value |
+   (value notNil and: [value > 0]) ifTrue: [
+      l := Leaf new: key asCharacter count: value.
+      sortcol add: l.
+   ]
+].
+
+(debug = 1) ifTrue: [
+    sortcol do: [:item |
+        stdout << item << nl.
+    ].
+].
+
+"3c."
+
+sortcol_ := SortedCollection new.
+
+" Repeatedly remove the two smallest elements from the priority queue... "
+[sortcol notEmpty] whileTrue: [
+   |first second left right character count|
+   first := sortcol removeFirst.
+
+   (sortcol isEmpty) ifFalse: [
+      second := sortcol removeFirst.
+
+      " ... creating a new tree ... "
+      " The smaller tree or leaf becomes the left child... "
+      (first <= second) ifTrue: [
+           left := first.
+           " ... and the larger the right child. "
+           right := second.
+      ]
+      ifFalse: [
+           left := second.
+           right := first.
+      ].
+
+      " The character in the new tree is the left child's character. "
+      character := left char.
+
+      " And I assume this means that the count becomes the left child's char's
+        count.
+      "
+      count := left count.
+
+      t := Tree new: character count: count left: left right: right.
+
+      sortcol add: t.
+   ]
+   ifTrue: [
+      sortcol_ add: first.
+   ].
+]
+
+[sortcol_ removeFirst] inspect.
