@@ -140,7 +140,7 @@ Object subclass: Leaf [
 
    <= other [
       ^ (count < other count)
-      | ((count = other count) & (char <= other char))
+      | ((count = other count) & (char < other char))
    ]
 
    printBase: aStream [
@@ -171,6 +171,11 @@ Leaf subclass: Tree [
       ^ result
    ]
 
+   <= other [
+      ^ (count < other count)
+      | ((count = other count) & (char < other char))
+   ]
+
    setLeft: aLeft andRight: aRight [
       left := aLeft.
       right := aRight.
@@ -195,7 +200,6 @@ sortcol := SortedCollection new.
   node with a character and a count, and insert that leaf node into
   a priority queue.
 "
-
 freqtable keysAndValuesDo: [:key :value |
    (value notNil and: [value > 0]) ifTrue: [
       l := Leaf new: key asCharacter count: value.
@@ -239,7 +243,7 @@ sortcol_ := SortedCollection new.
       " And I assume this means that the count becomes the left child's char's
         count.
       "
-      count := left count.
+      count := left count + right count.
 
       t := Tree new: character count: count left: left right: right.
 
@@ -248,6 +252,7 @@ sortcol_ := SortedCollection new.
    ifTrue: [
       sortcol_ add: first.
    ].
-]
+].
 
-[sortcol_ removeFirst] inspect.
+sortcol_ inspect.
+(sortcol_ removeFirst) inspect.
