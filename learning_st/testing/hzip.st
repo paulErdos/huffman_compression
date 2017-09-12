@@ -255,14 +255,49 @@ sortcol_ := SortedCollection new.
 ].
 
 sortcol_ inspect.
-hufmann_t := sortcol_ removeFirst
+hufmann_t := sortcol_ removeFirst.
 hufmann_t inspect.
 "
 (sortcol_ removeFirst) inspect.
 "
+encoding_table := SortedCollection new.
+
+Object subclass: Encoding [
+    |char string|
+    char [^ char]
+    string [^ string]
+    Encoding class >> new [self shouldNotImplement]
+
+    Encoding class >> new: character string: string [
+        |result|
+        result := super new.
+        result setChar: character setString: string.
+        ^ result.
+    ]
+
+    setChar: myChar setString: myString [
+        char := myChar.
+        string := myString.
+    ]
+
+    <= other [
+        char = other char
+            ifTrue: [^ string <= other string]
+            ifFalse: [^ char <= other char ].
+    ]
+
+    printOn: aStream [
+        ^ aStream << '[' << char << '] = ' << string << nl.
+    ]
+]
 
 
 stdout << nl << 'Before vising the Hufmann tree' << nl.
 hufmann_t inorder: [:char :string |
-   stdout << '[' << char << ']=' << string << nl.
+   encoding_table add: (Encoding new: char string: string).
 ] prefix: ''.
+
+(print_table = 1) ifTrue: [
+    "This is probably not the way to do it in the final version."
+    encoding_table inspect.
+].
