@@ -255,4 +255,14 @@ sortcol_ := SortedCollection new.
 ].
 
 sortcol_ inspect.
+hufmann_t := sortcol_ removeFirst
+hufmann_t inspect.
+"
 (sortcol_ removeFirst) inspect.
+"
+
+
+stdout << nl << 'Before vising the Hufmann tree' << nl.
+hufmann_t inorder: [:char :string |
+   stdout << '[' << char << ']=' << string << nl.
+] prefix: ''.
