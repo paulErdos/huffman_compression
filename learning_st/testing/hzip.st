@@ -307,3 +307,6 @@ hufmann_t inorder: [:char :string |
     "This is probably not the way to do it in the final version."
     encoding_table inspect.
 ].
+
+" sortcol_ should be empty"
+
