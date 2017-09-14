@@ -281,13 +281,19 @@ Object subclass: Encoding [
     ]
 
     <= other [
+       ^ (char < other char)
+       | ((char = other char) & (string <= other string))
+    ]
+"
+    <= other [
         char = other char
             ifTrue: [^ string <= other string]
             ifFalse: [^ char <= other char ].
     ]
+"
 
     printOn: aStream [
-        ^ aStream << '[' << char << '] = ' << string << nl.
+        ^ aStream << '[' << char << '] = ' << string << Character nl.
     ]
 ]
 
