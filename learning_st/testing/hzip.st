@@ -194,6 +194,7 @@ Leaf subclass: Tree [
 
 "Iterate over the freqtable"
 sortcol := SortedCollection new.
+sortcol_copy := SortedCollection new.
 
 
 " and for each non-zero element, create a leaf
@@ -204,6 +205,8 @@ freqtable keysAndValuesDo: [:key :value |
    (value notNil and: [value > 0]) ifTrue: [
       l := Leaf new: key asCharacter count: value.
       sortcol add: l.
+
+      sortcol_copy add: l.
    ]
 ].
 
