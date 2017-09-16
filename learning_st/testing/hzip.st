@@ -308,7 +308,12 @@ hufmann_t inorder: [:char :string |
 
 (print_table = 1) ifTrue: [
     "This is probably not the way to do it in the final version."
-    encoding_table inspect.
+    1 to: (encoding_table size) do: [ :i |
+        (encoding_table at: i) display.
+        (sortcol_copy at: i) display.
+    ].
+
+"    encoding_table inspect."
 ].
 
 " sortcol_ should be empty"
