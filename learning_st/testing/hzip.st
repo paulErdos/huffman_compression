@@ -300,17 +300,21 @@ Object subclass: Encoding [
     ]
 ]
 
+" 3d. "
 
 stdout << nl << 'Before vising the Hufmann tree' << nl.
 hufmann_t inorder: [:char :string |
    encoding_table add: (Encoding new: char string: string).
 ] prefix: ''.
 
+" 3e. "
+
+" If the -t option is specified ... "
 (print_table = 1) ifTrue: [
-    "This is probably not the way to do it in the final version."
+    " ... write out the encoding table sorted by character. "
     1 to: (encoding_table size) do: [ :i |
-        (encoding_table at: i) display.
-        (sortcol_copy at: i) display.
+        ((encoding_table at: i) char) displayNl.
+        "(sortcol_copy at: i)  displayNl."
     ].
 
 "    encoding_table inspect."
