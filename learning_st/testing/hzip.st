@@ -257,9 +257,9 @@ sortcol_ := SortedCollection new.
    ].
 ].
 
-sortcol_ inspect.
+"sortcol_ inspect."
 hufmann_t := sortcol_ removeFirst.
-hufmann_t inspect.
+"hufmann_t inspect."
 "
 (sortcol_ removeFirst) inspect.
 "
@@ -315,17 +315,25 @@ hufmann_t inorder: [:char :string |
     1 to: (encoding_table size) do: [ :i |
         | thisChar |
         thisChar := (encoding_table at: i) char.
+
         ((32 < (thisChar asInteger)) and: [(thisChar asInteger) < 127]) ifTrue: [
-            thisChar display.
+            stdout << '  ' << thisChar.
+            "thisChar display."
         ] ifFalse: [
-            thisChar asInteger display.
+            " Print formatting "
+            (thisChar asInteger < 10) ifTrue: [ stdout << ' '. ].
+            (thisChar asInteger < 100) ifTrue: [ stdout << ' '. ].
+            stdout << thisChar asInteger.
         ].
 
-        ', ' display.
 
+        (freqtable at: (thisChar asInteger)) < 10000 ifTrue: [ stdout << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 1000 ifTrue: [ stdout << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 100 ifTrue: [ stdout << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 10 ifTrue: [ stdout << ' '. ].
         (freqtable at: (thisChar asInteger)) display.
 
-        ', ' display.
+        stdout << ' '.
 
         (encoding_table at: i) string displayNl.
 
@@ -335,4 +343,3 @@ hufmann_t inorder: [:char :string |
 ].
 
 " sortcol_ should be empty"
-
