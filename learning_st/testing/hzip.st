@@ -339,7 +339,9 @@ hufmann_t inorder: [:char :string |
 
     ].
 
-"    encoding_table inspect."
+    " Then stop. "
+    ObjectMemory quit.
+
 ].
 
-" sortcol_ should be empty"
+stdout << 'unreachable?' << nl.
