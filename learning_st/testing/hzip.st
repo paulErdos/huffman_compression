@@ -316,11 +316,15 @@ hufmann_t inorder: [:char :string |
         | thisChar |
         thisChar := (encoding_table at: i) char.
         ((32 < (thisChar asInteger)) and: [(thisChar asInteger) < 127]) ifTrue: [
-            thisChar displayNl.
+            thisChar display.
         ] ifFalse: [
-            thisChar asInteger displayNl.
+            thisChar asInteger display.
         ].
-        "(sortcol_copy at: i)  displayNl."
+
+        ', ' display.
+
+        (freqtable at: (thisChar asInteger)) displayNl.
+
     ].
 
 "    encoding_table inspect."
