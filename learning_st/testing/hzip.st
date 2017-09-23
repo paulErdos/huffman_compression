@@ -313,7 +313,13 @@ hufmann_t inorder: [:char :string |
 (print_table = 1) ifTrue: [
     " ... write out the encoding table sorted by character. "
     1 to: (encoding_table size) do: [ :i |
-        ((encoding_table at: i) char) displayNl.
+        | thisChar |
+        thisChar := (encoding_table at: i) char.
+        ((32 < (thisChar asInteger)) and: [(thisChar asInteger) < 127]) ifTrue: [
+            thisChar displayNl.
+        ] ifFalse: [
+            thisChar asInteger displayNl.
+        ].
         "(sortcol_copy at: i)  displayNl."
     ].
 
