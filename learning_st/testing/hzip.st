@@ -323,7 +323,11 @@ hufmann_t inorder: [:char :string |
 
         ', ' display.
 
-        (freqtable at: (thisChar asInteger)) displayNl.
+        (freqtable at: (thisChar asInteger)) display.
+
+        ', ' display.
+
+        (encoding_table at: i) string displayNl.
 
     ].
 
