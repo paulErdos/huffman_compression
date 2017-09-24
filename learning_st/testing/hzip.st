@@ -64,11 +64,11 @@ Object subclass: ZeroArray [
 "check for proper number of arguments"
 argsize := Smalltalk arguments size.
 argsize < 2 ifTrue: [
-    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
     ObjectMemory quit: 1.
 ].
 argsize > 3 ifTrue: [
-    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
     ObjectMemory quit: 1.
 ].
 
@@ -78,13 +78,43 @@ opt := Smalltalk arguments at: 1.
 valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
                 (opt sameAs: '-t') | (opt sameAs: '-d').
 valid_option ifFalse: [
-    stdout << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
     ObjectMemory quit: 1.
 ].
 
-(opt sameAs: '-c') ifTrue: [ compress := 1. ].
-(opt sameAs: '-u') ifTrue: [ uncompress := 1. ].
-(opt sameAs: '-t') ifTrue: [ print_table := 1. ].
+|outfile|
+outfile := stdout.
+
+(opt sameAs: '-c') ifTrue: [
+    "The input file is compressed... "
+    compress := 1.
+
+    "... and written to the output file, if specified ... "
+    (Smalltalk arguments size) = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 1.
+        outfile := FileStream open: outfilename mode: FileStream write.
+    ].
+].
+(opt sameAs: '-u') ifTrue: [
+    uncompress := 1.
+
+    "... and written to the output file, if specified ... "
+    (Smalltalk arguments size) = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 1.
+        outfile := FileStream open: outfilename mode: FileStream write.
+    ].
+].
+(opt sameAs: '-t') ifTrue: [
+    (Smalltalk arguments size) = 2 ifTrue: [
+        print_table := 1.
+    ] ifFalse: [
+        stderr << 'Error: Output file may not be specified with -t option.'
+               << nl.
+        ObjectMemory quit: 1.
+    ].
+].
 (opt sameAs: '-d') ifTrue: [ debug := 1. ].
 
 " FILE INPUT "
@@ -109,7 +139,7 @@ freqtable at: 255 put: 1.
 (debug = 1) ifTrue: [
    freqtable keysAndValuesDo: [:key :value |
       (value notNil and: [value > 0]) ifTrue: [
-         stdout << 'freq[' << key asCharacter visible << '] = ' << value << nl.
+         outfile << 'freq[' << key asCharacter visible << '] = ' << value << nl.
       ]
    ].
 "   freqtable inspect."
@@ -155,6 +185,24 @@ Object subclass: Leaf [
       visitor value: char value: string.
    ]
 
+    postorder: visitor prefix: string [
+        " For each leaf, write out a 0 bit... "
+        | leafcontents |
+        leafcontents := '0'.
+
+        " ... followed by the eight bits of the corresponding byte. "
+        7 to: 0 by: -1 do: [:x |
+            leafcontents := leafcontents, (((char asInteger) bitAt: x) asString).
+        ].
+
+
+        " Debug. "
+        stdout << 'leafcontents: ' << leafcontents << ', char: ' << char << Character nl.
+
+        visitor value: leafcontents.
+
+    ]
+
 ]
 
 Leaf subclass: Tree [
@@ -190,6 +238,13 @@ Leaf subclass: Tree [
       right inorder: visitor prefix: string, '1'.
    ]
 
+    postorder: visitor prefix: string [
+        left postorder: visitor prefix: string.
+        right postorder: visitor prefix: string.
+        visitor value: '1'.
+
+    ]
+
 ]
 
 "Iterate over the freqtable"
@@ -212,7 +267,7 @@ freqtable keysAndValuesDo: [:key :value |
 
 (debug = 1) ifTrue: [
     sortcol do: [:item |
-        stdout << item << nl.
+        outfile << item << nl.
     ].
 ].
 
@@ -302,7 +357,6 @@ Object subclass: Encoding [
 
 " 3d. "
 
-stdout << nl << 'Before vising the Hufmann tree' << nl.
 hufmann_t inorder: [:char :string |
    encoding_table add: (Encoding new: char string: string).
 ] prefix: ''.
@@ -317,23 +371,23 @@ hufmann_t inorder: [:char :string |
         thisChar := (encoding_table at: i) char.
 
         ((32 < (thisChar asInteger)) and: [(thisChar asInteger) < 127]) ifTrue: [
-            stdout << '  ' << thisChar.
+            outfile << '  ' << thisChar.
             "thisChar display."
         ] ifFalse: [
             " Print formatting "
-            (thisChar asInteger < 10) ifTrue: [ stdout << ' '. ].
-            (thisChar asInteger < 100) ifTrue: [ stdout << ' '. ].
-            stdout << thisChar asInteger.
+            (thisChar asInteger < 10) ifTrue: [ outfile << ' '. ].
+            (thisChar asInteger < 100) ifTrue: [ outfile << ' '. ].
+            outfile << thisChar asInteger.
         ].
 
 
-        (freqtable at: (thisChar asInteger)) < 10000 ifTrue: [ stdout << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 1000 ifTrue: [ stdout << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 100 ifTrue: [ stdout << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 10 ifTrue: [ stdout << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 10000 ifTrue: [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 1000 ifTrue: [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 100 ifTrue: [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 10 ifTrue: [ outfile << ' '. ].
         (freqtable at: (thisChar asInteger)) display.
 
-        stdout << ' '.
+        outfile << ' '.
 
         (encoding_table at: i) string displayNl.
 
@@ -342,6 +396,15 @@ hufmann_t inorder: [:char :string |
     " Then stop. "
     ObjectMemory quit.
 
-].
+] ifFalse: [ " 3f. If the -t option is not specified, write out the encoding "
+             " table as follows. "
 
-stdout << 'unreachable?' << nl.
+    " Perform a postorder traversal of the encoding tree... "
+    | outputstring |
+    outputstring := ''.
+    hufmann_t postorder: [:nodeType  |
+        outputstring, nodeType.
+    ] prefix: ''.
+
+    outfile << outputstring.
+].
