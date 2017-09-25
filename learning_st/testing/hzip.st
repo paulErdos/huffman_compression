@@ -503,4 +503,55 @@ writeBitArray := [:outfile :outstring|
     ].
 
     writeBitArray value: outfile value: outputstring.
+
+    outfile close.
 ].
+
+" 4. Decompression "
+
+Object subclass: BitStream [
+   |bitIndex byte myStream|
+   BitStream class >> new: fileStream [
+      |result|
+      result := super new.
+      result init: fileStream.
+      ^result
+   ]
+   init: fileStream [
+      myStream := fileStream.
+      bitIndex := 1.
+   ]
+   nextBit [
+      bitIndex = 1 ifTrue: [
+         byte := myStream next.
+         bitIndex := 9.
+      ].
+      bitIndex := bitIndex - 1.
+      ^byte value bitAt: bitIndex
+   ]
+   atEnd [
+      ^bitIndex = 1 and: [myStream atEnd]
+   ]
+   currByte [
+      ^byte
+   ]
+]
+
+nl := Character nl.
+stdinBits := BitStream new: stdin.
+count := 0.
+[stdinBits atEnd] whileFalse: [
+   stdout << stdinBits nextBit.
+   count := count + 1.
+   count = 4 ifTrue: [stdout << ' '].
+   count = 8 ifTrue: [
+      stdout << ' ' << stdinBits currByte visible << nl.
+      count := 0
+   ].
+]
+uncompress = 1 ifTrue [
+    | filename infile |
+    filename := Smalltalk arguments at: 2.
+    infile := FileStream open: filename mode: FileStream read.
+
+]
