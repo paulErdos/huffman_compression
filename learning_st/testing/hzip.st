@@ -92,20 +92,38 @@ outfile := stdout.
     "... and written to the output file, if specified ... "
     (Smalltalk arguments size) = 3 ifTrue: [
         |outfilename|
-        outfilename := Smalltalk arguments at: 1.
-        outfile := FileStream open: outfilename mode: FileStream write.
-    ].
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile := FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
 ].
+
 (opt sameAs: '-u') ifTrue: [
     uncompress := 1.
 
     "... and written to the output file, if specified ... "
-    (Smalltalk arguments size) = 3 ifTrue: [
+    Smalltalk arguments size = 3 ifTrue: [
         |outfilename|
-        outfilename := Smalltalk arguments at: 1.
-        outfile := FileStream open: outfilename mode: FileStream write.
-    ].
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile := FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
 ].
+
 (opt sameAs: '-t') ifTrue: [
     (Smalltalk arguments size) = 2 ifTrue: [
         print_table := 1.
@@ -191,16 +209,11 @@ Object subclass: Leaf [
         leafcontents := '0'.
 
         " ... followed by the eight bits of the corresponding byte. "
-        7 to: 0 by: -1 do: [:x |
+        8 to: 1 by: -1 do: [:x |
             leafcontents := leafcontents, (((char asInteger) bitAt: x) asString).
         ].
 
-
-        " Debug. "
-        stdout << 'leafcontents: ' << leafcontents << ', char: ' << char << Character nl.
-
         visitor value: leafcontents.
-
     ]
 
 ]
@@ -363,6 +376,45 @@ hufmann_t inorder: [:char :string |
 
 " 3e. "
 
+Object subclass: OutBits [
+   |bitIndex currentByte myStream|
+   OutBits class >> new [
+      self shouldNotImplement.
+   ]
+   OutBits class >> new: fileStream [
+      |result|
+      result := super new.
+      result init: fileStream.
+      ^result
+   ]
+   clearByte [
+      bitIndex := 8.
+      currentByte := 0.
+   ]
+   init: fileStream [
+      myStream := fileStream.
+      self clearByte.
+   ]
+   flushByte [
+      bitIndex = 8 ifFalse: [
+         myStream nextPutByte: currentByte.
+         self clearByte.
+      ]
+   ]
+   writeBit: bit [
+      currentByte := currentByte bitAt: bitIndex put: bit.
+      bitIndex := bitIndex - 1.
+      bitIndex = 0 ifTrue: [self flushByte].
+   ]
+]
+
+writeBitArray := [:outfile :outstring|
+   |outBytes|
+   outBytes := OutBits new: outfile.
+   outstring do: [:bit| outBytes writeBit: bit].
+   outBytes flushByte.
+].
+
 " If the -t option is specified ... "
 (print_table = 1) ifTrue: [
     " ... write out the encoding table sorted by character. "
@@ -403,8 +455,9 @@ hufmann_t inorder: [:char :string |
     | outputstring |
     outputstring := ''.
     hufmann_t postorder: [:nodeType  |
-        outputstring, nodeType.
+        outputstring := outputstring, nodeType.
     ] prefix: ''.
 
-    outfile << outputstring.
+    writeBitArray value: outfile value: outputstring.
+    outfile close.
 ].
