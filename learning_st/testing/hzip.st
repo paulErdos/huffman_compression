@@ -205,12 +205,21 @@ Object subclass: Leaf [
 
     postorder: visitor prefix: string [
         " For each leaf, write out a 0 bit... "
-        | leafcontents |
+        | leafcontents nextBit |
         leafcontents := '0'.
 
         " ... followed by the eight bits of the corresponding byte. "
         8 to: 1 by: -1 do: [:x |
-            leafcontents := leafcontents, (((char asInteger) bitAt: x) asString).
+            x = 0 ifTrue: [
+                nextBit := '0'.
+            ] ifFalse: [
+                x = 256 ifTrue: [
+                    nextBit := '1'.
+                ] ifFalse: [
+                    nextBit := (((char asInteger) bitAt: x) asString).
+                ].
+            ].
+            leafcontents := leafcontents, nextBit.
         ].
 
         visitor value: leafcontents.
@@ -460,4 +469,15 @@ writeBitArray := [:outfile :outstring|
 
     writeBitArray value: outfile value: outputstring.
     outfile close.
+].
+
+(compress = 1) ifTrue: [
+    " Reopen the file... "
+    filename := Smalltalk arguments at: 2.
+    infile := FileStream open: filename mode: FileStream read.
+ 
+    [infile atEnd not] whileTrue: [
+       |ordChar|
+       ordChar := infile next asInteger.
+    ].
 ].
