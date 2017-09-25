@@ -402,7 +402,7 @@ Object subclass: OutBits [
       ]
    ]
    writeBit: bit [
-      currentByte := currentByte bitAt: bitIndex put: bit.
+      currentByte := currentByte bitAt: bitIndex put: (bit asInteger).
       bitIndex := bitIndex - 1.
       bitIndex = 0 ifTrue: [self flushByte].
    ]
