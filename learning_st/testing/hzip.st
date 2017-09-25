@@ -341,6 +341,7 @@ hufmann_t := sortcol_ removeFirst.
 (sortcol_ removeFirst) inspect.
 "
 encoding_table := SortedCollection new.
+encoding_table_ := Array new: 256.
 
 Object subclass: Encoding [
     |char string|
@@ -381,6 +382,7 @@ Object subclass: Encoding [
 
 hufmann_t inorder: [:char :string |
    encoding_table add: (Encoding new: char string: string).
+    encoding_table_ at: (char asInteger) put: string.
 ] prefix: ''.
 
 " 3e. "
@@ -455,10 +457,13 @@ writeBitArray := [:outfile :outstring|
     ].
 
     " Then stop. "
-    ObjectMemory quit.
+    print_table = 1 ifTrue: [ ObjectMemory quit. ].
 
-] ifFalse: [ " 3f. If the -t option is not specified, write out the encoding "
-             " table as follows. "
+].
+
+(compress = 1) ifTrue: [
+    " 3f. If the -t option is not specified, write out the encoding "
+    " table as follows. "
 
     " Perform a postorder traversal of the encoding tree... "
     | outputstring |
@@ -472,12 +477,33 @@ writeBitArray := [:outfile :outstring|
 ].
 
 (compress = 1) ifTrue: [
+    | n_writtenbits n_remainingbits outputstring |
+
+    outputstring := ''.
+
     " Reopen the file... "
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
- 
+
+    n_writtenbits := 0.
     [infile atEnd not] whileTrue: [
-       |ordChar|
-       ordChar := infile next asInteger.
+        |ordChar|
+        ordChar := infile next asInteger.
+
+        outputstring := outputstring, (encoding_table_ at: ordChar).
+"        outfile << (encoding_table_ at: ordChar)."
+
+        n_writtenbits := n_writtenbits + 1.
     ].
+
+    outputstring := outputstring, (encoding_table_ at: 256).
+    n_writtenbits := n_writtenbits + 1.
+
+    n_remainingbits := n_writtenbits \\ 8.
+
+    n_remainingbits to: 1 by: -1 do: [ :i |
+        outputstring := outputstring, '0'.
+    ].
+
+    writeBitArray value: outfile value: outputstring.
 ].
