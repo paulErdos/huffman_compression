@@ -466,18 +466,15 @@ writeBitArray := [:outfile :outstring|
     " table as follows. "
 
     " Perform a postorder traversal of the encoding tree... "
-    | outputstring |
+    | n_writtenbits n_remainingbits outputstring |
     outputstring := ''.
+
     hufmann_t postorder: [:nodeType  |
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
     writeBitArray value: outfile value: outputstring.
-    outfile close.
-].
 
-(compress = 1) ifTrue: [
-    | n_writtenbits n_remainingbits outputstring |
 
     outputstring := ''.
 
