@@ -341,7 +341,7 @@ hufmann_t := sortcol_ removeFirst.
 (sortcol_ removeFirst) inspect.
 "
 encoding_table := SortedCollection new.
-encoding_table_ := Array new: 256.
+encoding_table_ := ZeroArray new: 256.
 
 Object subclass: Encoding [
     |char string|
@@ -381,7 +381,7 @@ Object subclass: Encoding [
 " 3d. "
 
 hufmann_t inorder: [:char :string |
-   encoding_table add: (Encoding new: char string: string).
+    encoding_table add: (Encoding new: char string: string).
     encoding_table_ at: (char asInteger) put: string.
 ] prefix: ''.
 
@@ -538,13 +538,66 @@ Object subclass: BitStream [
 ]
 
 uncompress = 1 ifTrue: [
-    | filename infile stdinBits|
+    | filename infile stdinBits theNextBit count readNextNode number |
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
     stdinBits := BitStream new: infile.
 
+
+    count := 0.
+    number := 0.
+    theNextBit := 0.
+    readNextNode := 1.
+
+    [stdinBits atEnd] whileFalse: [
+        readNextNode = 1 ifTrue: [
+            theNextBit := stdinBits nextBit.
+        ].
+
+        theNextBit = 0 ifTrue: [
+            readLeaf := 1.
+            assembleTree := 0.
+        ] ifFalse: [
+            readLeaf := 0.
+            assembleTree := 1.
+        ].
+
+        readLeaf = 1 ifTrue: [
+            stdinBits atEnd ifTrue: [
+                count := count + 1.
+                theNextBit := stdinBits nextBit.
+                number := number bitAt: count put: theNextBit.
+    
+                count = 8 ifTrue: [
+                    " Push number onto stack. "
+                    number := 0.
+                    count := 0.
+                    readNextNode := 1.
+                ].
+            ].
+        ].
+
+"        assembleTree = 1 ifTrue: ["
+            " Pop the 1 subtree off of the stack. "
+            " Pop the 0 subtree off of the stack. "
+            " Create a new tree with both of these as children... "
+            " ... and push this new tree back on the stack. "
+"        ]"
+    ].
+
+    " Sanity check. "
+    " Pop off of the stack. "
+    " If stack isn't empty, scream at stderr and die. "
+"
     count := 0.
     [stdinBits atEnd] whileFalse: [
+        "" Read one bit. ""
+        theNextBit := stdinBits nextBit.
+
+       "" If it is a 0... ""
+        theNextBit = 0 ifTrue: [
+            .
+        ]
        stdout << stdinBits nextBit.
        count := count + 1.
        count = 4 ifTrue: [stdout << ' '].
@@ -553,4 +606,5 @@ uncompress = 1 ifTrue: [
           count := 0
        ].
     ]
+"
 ].
