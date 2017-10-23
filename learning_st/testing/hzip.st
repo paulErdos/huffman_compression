@@ -2,168 +2,9 @@
 
 nl := Character nl.
 
-"
-Object editing
-"
-
-Character extend [
-   isPrint [
-      ^ (Character space <= self) & (self <= $~)
-   ]
-   visible [
-      self isPrint ifTrue: [^ self asString]
-                   ifFalse: [^ self asInteger printStringRadix: 8]
-   ]
-]
-
-Object subclass: ZeroArray [
-   |theArray|
-
-   ZeroArray class >> new [
-      self shouldNotImplement.
-   ]
-
-   ZeroArray class >> new: size [
-      |result|
-      result := super new.
-      result init: size.
-      ^ result
-   ]
-
-   init: size [
-      theArray := Array new: size.
-   ]
-
-   size [
-      ^ theArray size.
-   ]
-
-   at: index [
-      ^ theArray at: index + 1.
-   ]
-
-   at: index put: value [
-      ^ theArray at: index + 1 put: value.
-   ]
-
-   incr: index [
-      (self at: index) isNil
-         ifTrue: [ self at: index put: 0].
-      self at: index put: (self at: index) + 1.
-   ]
-
-   keysAndValuesDo: aBlock [
-      (0 to: (self size) - 1) do: [:index |
-         aBlock value: index value: (self at: index).
-      ]
-   ]
-]
-
-" Verify program called correctly. "
-
-"check for proper number of arguments"
-argsize := Smalltalk arguments size.
-argsize < 2 ifTrue: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-argsize > 3 ifTrue: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-
-" Parse command line arguments "
-
-opt := Smalltalk arguments at: 1.
-valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
-                (opt sameAs: '-t') | (opt sameAs: '-d').
-valid_option ifFalse: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-
-|outfile|
-outfile := stdout.
-
-(opt sameAs: '-c') ifTrue: [
-    "The input file is compressed... "
-    compress := 1.
-
-    "... and written to the output file, if specified ... "
-    (Smalltalk arguments size) = 3 ifTrue: [
-        |outfilename|
-        outfilename := Smalltalk arguments at: 3.
-        [
-            outfile := FileStream open: outfilename mode: FileStream write.
-        ] on: SystemExceptions.FileError do: [:signal |
-            |errno|
-            errno := File errno.
-            stdout flush.
-            stderr << 'Error: ' << signal messageText << nl.
-            stderr flush.
-        ]
-    ]
-].
-
-(opt sameAs: '-u') ifTrue: [
-    uncompress := 1.
-
-    "... and written to the output file, if specified ... "
-    Smalltalk arguments size = 3 ifTrue: [
-        |outfilename|
-        outfilename := Smalltalk arguments at: 3.
-        [
-            outfile := FileStream open: outfilename mode: FileStream write.
-        ] on: SystemExceptions.FileError do: [:signal |
-            |errno|
-            errno := File errno.
-            stdout flush.
-            stderr << 'Error: ' << signal messageText << nl.
-            stderr flush.
-        ]
-    ]
-].
-
-(opt sameAs: '-t') ifTrue: [
-    (Smalltalk arguments size) = 2 ifTrue: [
-        print_table := 1.
-    ] ifFalse: [
-        stderr << 'Error: Output file may not be specified with -t option.'
-               << nl.
-        ObjectMemory quit: 1.
-    ].
-].
-(opt sameAs: '-d') ifTrue: [ debug := 1. ].
-
-" FILE INPUT "
-
-"open file"
-filename := Smalltalk arguments at: 2.
-infile := FileStream open: filename mode: FileStream read.
-
-"build the frequency table"
-freqtable := ZeroArray new: 256.
-[infile atEnd not] whileTrue: [
-   |ordChar|
-   ordChar := infile next asInteger.
-   freqtable incr: ordChar.
-].
-
-"add entry 256 with a count of 1 to indicate EoF.
- because it's zero-indexed, entry 256 is indexed by 255"
-freqtable at: 255 put: 1.
-
-"debug: print the freqtable"
-(debug = 1) ifTrue: [
-   freqtable keysAndValuesDo: [:key :value |
-      (value notNil and: [value > 0]) ifTrue: [
-         outfile << 'freq[' << key asCharacter visible << '] = ' << value << nl.
-      ]
-   ].
-"   freqtable inspect."
-].
-
-"3b."
+"============================================================================"
+" Object editing                                                             "
+"============================================================================"
 
 Object subclass: Leaf [
    |char count|
@@ -269,41 +110,237 @@ Leaf subclass: Tree [
 
 ]
 
-"Iterate over the freqtable"
-sortcol := SortedCollection new.
-sortcol_copy := SortedCollection new.
 
-
-" and for each non-zero element, create a leaf
-  node with a character and a count, and insert that leaf node into
-  a priority queue.
-"
-freqtable keysAndValuesDo: [:key :value |
-   (value notNil and: [value > 0]) ifTrue: [
-      l := Leaf new: key asCharacter count: value.
-      sortcol add: l.
-
-      sortcol_copy add: l.
+Character extend [
+   isPrint [
+      ^ (Character space <= self) & (self <= $~)
    ]
+   visible [
+      self isPrint ifTrue: [^ self asString]
+                   ifFalse: [^ self asInteger printStringRadix: 8]
+   ]
+]
+
+Object subclass: ZeroArray [
+   |theArray|
+
+   ZeroArray class >> new [
+      self shouldNotImplement.
+   ]
+
+   ZeroArray class >> new: size [
+      |result|
+      result := super new.
+      result init: size.
+      ^ result
+   ]
+
+   init: size [
+      theArray := Array new: size.
+   ]
+
+   size [
+      ^ theArray size.
+   ]
+
+   at: index [
+      ^ theArray at: index + 1.
+   ]
+
+   at: index put: value [
+      ^ theArray at: index + 1 put: value.
+   ]
+
+   incr: index [
+      (self at: index) isNil
+         ifTrue: [ self at: index put: 0].
+      self at: index put: (self at: index) + 1.
+   ]
+
+   keysAndValuesDo: aBlock [
+      (0 to: (self size) - 1) do: [:index |
+         aBlock value: index value: (self at: index).
+      ]
+   ]
+]
+
+"============================================================================"
+" Verify program called correctly.                                           "
+"============================================================================"
+
+" Variable declarations "
+
+|outfile|
+outfile := stdout.
+
+
+" Check for proper number of arguments "
+
+argsize := Smalltalk arguments size.
+argsize < 2 ifTrue: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+argsize > 3 ifTrue: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
 ].
 
-(debug = 1) ifTrue: [
-    sortcol do: [:item |
-        outfile << item << nl.
+"============================================================================"
+" Initialize program state.                                                  "
+"============================================================================"
+
+" Parse command line arguments "
+opt := Smalltalk arguments at: 1.
+valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
+                (opt sameAs: '-t') | (opt sameAs: '-d').
+valid_option ifFalse: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+
+
+"============================================================================"
+" Set up configuration based on arguments.                                   "
+"============================================================================"
+
+"The input file is compressed... "
+(opt sameAs: '-c') ifTrue: [
+    compress := 1.
+
+    "... and written to the output file, if specified ... "
+    (Smalltalk arguments size) = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile := FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
+].
+
+
+" The input file is assumed to be compressed... "
+(opt sameAs: '-u') ifTrue: [
+    uncompress := 1.
+
+    "... and written to the output file, if specified ... "
+    Smalltalk arguments size = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile := FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
+].
+
+" The compression algorith is activated "
+(opt sameAs: '-t') ifTrue: [
+    (Smalltalk arguments size) = 2 ifTrue: [
+        " And the decoding tree is printed to the stanadard output. "
+        print_table := 1.
+    ] ifFalse: [
+        " The output filename may not be specified. "
+        stderr << 'Error: Output file may not be specified with -t option.'
+               << nl.
+        ObjectMemory quit: 1.
     ].
 ].
 
-"3c."
+
+" Debug information is printed for the benefit of the application author. "
+(opt sameAs: '-d') ifTrue: [ debug := 1. ].
+
+
+"============================================================================"
+" 3. Compression                                                             "
+"============================================================================"
+
+" The compression algorithm reads the file twice. Once to construct the
+  encoding tree, and if the -c rather than the -t option is specified, a
+  second time to perform the compression. It proceeds as follows: "
+
+"=== 3a ====================================================================="
+
+" Read in the input file and create a frequency table... "
+freqtable := ZeroArray new: 256.
+filename := Smalltalk arguments at: 2.
+infile := FileStream open: filename mode: FileStream read.
+
+[infile atEnd not] whileTrue: [
+    |ordChar|
+    ordChar := infile next asInteger.
+
+    " ... counting the number of times each character appears on input. "
+    freqtable incr: ordChar.
+].
+
+" Possible error? "
+" Add entry 256 with a count of 1 to indicate EoF. "
+freqtable at: 255 put: 1.
+
+" Debug: print the frequency table"
+(debug = 1) ifTrue: [
+   freqtable keysAndValuesDo: [:key :value |
+      (value notNil and: [value > 0]) ifTrue: [
+         outfile << 'freq[' << key asCharacter visible << '] = ' << value << nl.
+      ]
+   ].
+].
+
+
+"=== 3b ====================================================================="
+
+sortcol := SortedCollection new.
+sortcol_copy := SortedCollection new.
+
+" Iterate over the frequency table... "
+freqtable keysAndValuesDo: [:key :value |
+    " ... and for each nonzero element ... "
+    (value notNil and: [value > 0]) ifTrue: [
+        " ... create a leaf node ... "
+        l := Leaf new: key asCharacter count: value.
+        " ... and insert that node into a priority queue. """
+        sortcol add: l.
+
+        sortcol_copy add: l.
+    ]
+].
+
+(debug = 1) ifTrue: [
+    outfile << 'Debug 3b' << nl.
+    sortcol do: [:item |
+        outfile << item << nl.
+    ].
+    outfile << 'Debug 3b complete.'.
+    outfile << ''.
+].
+
+"=== 3c ====================================================================="
 
 sortcol_ := SortedCollection new.
 
-" Repeatedly remove the two smallest elements from the priority queue... "
+" Repeatedly ... "
 [sortcol notEmpty] whileTrue: [
    |first second left right character count|
-   first := sortcol removeFirst.
 
-   (sortcol isEmpty) ifFalse: [
-      second := sortcol removeFirst.
+    " ... remove the two ... "
+    first := sortcol removeFirst.
+
+    (sortcol isEmpty) ifFalse: [
+        " ... two smallest element in the priority queue ... "
+        second := sortcol removeFirst.
 
       " ... creating a new tree ... "
       " The smaller tree or leaf becomes the left child... "
@@ -552,6 +589,7 @@ uncompress = 1 ifTrue: [
     [stdinBits atEnd] whileFalse: [
         readNextNode = 1 ifTrue: [
             theNextBit := stdinBits nextBit.
+            stdout << theNextBit.
         ].
 
         theNextBit = 0 ifTrue: [
@@ -566,6 +604,7 @@ uncompress = 1 ifTrue: [
             stdinBits atEnd ifTrue: [
                 count := count + 1.
                 theNextBit := stdinBits nextBit.
+                stdout << theNextBit asInt.
                 number := number bitAt: count put: theNextBit.
     
                 count = 8 ifTrue: [
