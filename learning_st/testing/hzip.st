@@ -51,16 +51,25 @@ Object subclass: Leaf [
 
         " ... followed by the eight bits of the corresponding byte. "
         8 to: 1 by: -1 do: [:x |
-            x = 0 ifTrue: [
-                nextBit := '0'.
-            ] ifFalse: [
-                x = 256 ifTrue: [
-                    nextBit := '1'.
-                ] ifFalse: [
-                    nextBit := (((char asInteger) bitAt: x) asString).
-                ].
-            ].
+            (char asInteger) displayNl.
+
+            nextBit := (((char asInteger) bitAt: x) asString).
+
+            nextBit displayNl.
+
             leafcontents := leafcontents, nextBit.
+        ].
+
+        " As a special case, if the byte is 0, write out bit 8, which will be
+          a 0 for a byte value of 0, and a 1 for a byte value of 256 (the
+          EOF marker).
+        "
+        (char asInteger) = 256 ifTrue: [
+            leafcontents := leafcontents, '1'.
+        ].
+
+        (char asInteger) = 0 ifTrue: [
+            leafcontents := leafcontents, '0'.
         ].
 
         visitor value: leafcontents.
@@ -109,7 +118,6 @@ Leaf subclass: Tree [
     ]
 
 ]
-
 
 Character extend [
    isPrint [
@@ -163,6 +171,102 @@ Object subclass: ZeroArray [
       ]
    ]
 ]
+
+Object subclass: Encoding [
+    |char string|
+    char [^ char]
+    string [^ string]
+    Encoding class >> new [self shouldNotImplement]
+
+    Encoding class >> new: character string: string [
+        |result|
+        result := super new.
+        result setChar: character setString: string.
+        ^ result.
+    ]
+
+    setChar: myChar setString: myString [
+        char := myChar.
+        string := myString.
+    ]
+
+    <= other [
+       ^ (char < other char)
+       | ((char = other char) & (string <= other string))
+    ]
+"
+    <= other [
+        char = other char
+            ifTrue: [^ string <= other string]
+            ifFalse: [^ char <= other char ].
+    ]
+"
+
+    printOn: aStream [
+        ^ aStream << '[' << char << '] = ' << string << Character nl.
+    ]
+]
+
+Object subclass: OutBits [
+   |bitIndex currentByte myStream|
+   OutBits class >> new [
+      self shouldNotImplement.
+   ]
+   OutBits class >> new: fileStream [
+      |result|
+      result := super new.
+      result init: fileStream.
+      ^result
+   ]
+   clearByte [
+      bitIndex := 8.
+      currentByte := 0.
+   ]
+   init: fileStream [
+      myStream := fileStream.
+      self clearByte.
+   ]
+   flushByte [
+      bitIndex = 8 ifFalse: [
+         myStream nextPutByte: currentByte.
+         self clearByte.
+      ]
+   ]
+   writeBit: bit [
+      currentByte := currentByte bitAt: bitIndex put: (bit asInteger).
+      bitIndex := bitIndex - 1.
+      bitIndex = 0 ifTrue: [self flushByte].
+   ]
+]
+
+Object subclass: BitStream [
+   |bitIndex byte myStream|
+   BitStream class >> new: fileStream [
+      |result|
+      result := super new.
+      result init: fileStream.
+      ^result
+   ]
+   init: fileStream [
+      myStream := fileStream.
+      bitIndex := 1.
+   ]
+   nextBit [
+      bitIndex = 1 ifTrue: [
+         byte := myStream next.
+         bitIndex := 9.
+      ].
+      bitIndex := bitIndex - 1.
+      ^byte value bitAt: bitIndex
+   ]
+   atEnd [
+      ^bitIndex = 1 and: [myStream atEnd]
+   ]
+   currByte [
+      ^byte
+   ]
+]
+
 
 "============================================================================"
 " Verify program called correctly.                                           "
@@ -274,7 +378,7 @@ valid_option ifFalse: [
 "=== 3a ====================================================================="
 
 " Read in the input file and create a frequency table... "
-freqtable := ZeroArray new: 256.
+freqtable := ZeroArray new: 257.
 filename := Smalltalk arguments at: 2.
 infile := FileStream open: filename mode: FileStream read.
 
@@ -288,7 +392,7 @@ infile := FileStream open: filename mode: FileStream read.
 
 " Possible error? "
 " Add entry 256 with a count of 1 to indicate EoF. "
-freqtable at: 255 put: 1.
+freqtable at: 256 put: 1.
 
 " Debug: print the frequency table"
 (debug = 1) ifTrue: [
@@ -380,81 +484,15 @@ hufmann_t := sortcol_ removeFirst.
 encoding_table := SortedCollection new.
 encoding_table_ := ZeroArray new: 256.
 
-Object subclass: Encoding [
-    |char string|
-    char [^ char]
-    string [^ string]
-    Encoding class >> new [self shouldNotImplement]
 
-    Encoding class >> new: character string: string [
-        |result|
-        result := super new.
-        result setChar: character setString: string.
-        ^ result.
-    ]
-
-    setChar: myChar setString: myString [
-        char := myChar.
-        string := myString.
-    ]
-
-    <= other [
-       ^ (char < other char)
-       | ((char = other char) & (string <= other string))
-    ]
-"
-    <= other [
-        char = other char
-            ifTrue: [^ string <= other string]
-            ifFalse: [^ char <= other char ].
-    ]
-"
-
-    printOn: aStream [
-        ^ aStream << '[' << char << '] = ' << string << Character nl.
-    ]
-]
-
-" 3d. "
+"=== 3d. ====================================================================="
 
 hufmann_t inorder: [:char :string |
     encoding_table add: (Encoding new: char string: string).
     encoding_table_ at: (char asInteger) put: string.
 ] prefix: ''.
 
-" 3e. "
-
-Object subclass: OutBits [
-   |bitIndex currentByte myStream|
-   OutBits class >> new [
-      self shouldNotImplement.
-   ]
-   OutBits class >> new: fileStream [
-      |result|
-      result := super new.
-      result init: fileStream.
-      ^result
-   ]
-   clearByte [
-      bitIndex := 8.
-      currentByte := 0.
-   ]
-   init: fileStream [
-      myStream := fileStream.
-      self clearByte.
-   ]
-   flushByte [
-      bitIndex = 8 ifFalse: [
-         myStream nextPutByte: currentByte.
-         self clearByte.
-      ]
-   ]
-   writeBit: bit [
-      currentByte := currentByte bitAt: bitIndex put: (bit asInteger).
-      bitIndex := bitIndex - 1.
-      bitIndex = 0 ifTrue: [self flushByte].
-   ]
-]
+"=== 3e. ===CHECKED==========================================================="
 
 writeBitArray := [:outfile :outstring|
    |outBytes|
@@ -498,6 +536,9 @@ writeBitArray := [:outfile :outstring|
 
 ].
 
+
+"=== 3f ====================================================================="
+
 (compress = 1) ifTrue: [
     " 3f. If the -t option is not specified, write out the encoding "
     " table as follows. "
@@ -510,12 +551,17 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
+    " Debug "
+    outputstring displayNl.
+
     writeBitArray value: outfile value: outputstring.
 
 
     outputstring := ''.
 
     " Reopen the file... "
+
+"
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
 
@@ -525,11 +571,18 @@ writeBitArray := [:outfile :outstring|
         ordChar := infile next asInteger.
 
         outputstring := outputstring, (encoding_table_ at: ordChar).
-"        outfile << (encoding_table_ at: ordChar)."
+"
 
+        "outfile << (encoding_table_ at: ordChar)."
+
+"
         n_writtenbits := n_writtenbits + 1.
     ].
+"
 
+    " The error is here. 255 instead of 256 uncauses the error. "
+
+"
     outputstring := outputstring, (encoding_table_ at: 256).
     n_writtenbits := n_writtenbits + 1.
 
@@ -542,37 +595,14 @@ writeBitArray := [:outfile :outstring|
     writeBitArray value: outfile value: outputstring.
 
     outfile close.
+"
+
 ].
+
+
 
 " 4. Decompression "
 
-Object subclass: BitStream [
-   |bitIndex byte myStream|
-   BitStream class >> new: fileStream [
-      |result|
-      result := super new.
-      result init: fileStream.
-      ^result
-   ]
-   init: fileStream [
-      myStream := fileStream.
-      bitIndex := 1.
-   ]
-   nextBit [
-      bitIndex = 1 ifTrue: [
-         byte := myStream next.
-         bitIndex := 9.
-      ].
-      bitIndex := bitIndex - 1.
-      ^byte value bitAt: bitIndex
-   ]
-   atEnd [
-      ^bitIndex = 1 and: [myStream atEnd]
-   ]
-   currByte [
-      ^byte
-   ]
-]
 
 uncompress = 1 ifTrue: [
     | filename infile stdinBits theNextBit count readNextNode number |
@@ -606,7 +636,7 @@ uncompress = 1 ifTrue: [
                 theNextBit := stdinBits nextBit.
                 stdout << theNextBit asInt.
                 number := number bitAt: count put: theNextBit.
-    
+
                 count = 8 ifTrue: [
                     " Push number onto stack. "
                     number := 0.
