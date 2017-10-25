@@ -265,6 +265,36 @@ Object subclass: BitStream [
    ]
 ]
 
+Object subclass: Stack [
+    | theArray theIndex |
+
+    Stack class >> new [
+        self shouldNotImplement.
+    ]
+
+    Stack class >> new: size [
+        | result |
+        result := super new.
+        result init: size.
+        ^ result
+    ]
+
+    init: size [
+        theArray := Array new: size.
+        theIndex := 1.
+    ]
+
+    push: value [
+        theArray at: theIndex put: value.
+        theIndex := theIndex + 1.
+    ]
+
+    pop [
+        theIndex := theIndex - 1.
+        ^ theArray at: (theIndex + 1).
+    ]
+]
+
 
 "============================================================================"
 " Verify program called correctly.                                           "
@@ -549,10 +579,6 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
-    " Debug "
-    outputstring displayNl.
-
-
 "=== 3h ====================================================================="
 
     " Reopen the file... "
@@ -564,19 +590,10 @@ writeBitArray := [:outfile :outstring|
         ordChar := infile next asInteger.
 
         outputstring := outputstring, (encoding_table_ at: ordChar).
-
-        " Debug "
-        outputstring displayNl.
-
     ].
 
     " Add EOF marker "
     outputstring := outputstring, (encoding_table_ at: 256).
-
-
-    " Debug "
-    outputstring displayNl.
-
 
     " Pad with zeroes out to a byte boundary, if needed. "
     n_remainingbits := (8 - (outputstring size) \\ 8).
@@ -584,15 +601,7 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, '0'.
     ].
 
-
-    " Debug "
-    outputstring displayNl.
-
-
     writeBitArray value: outfile value: outputstring.
-
-    " Debug "
-    outputstring displayNl.
 
     outfile close.
 ].
@@ -602,40 +611,49 @@ writeBitArray := [:outfile :outstring|
 " 4. Decompression                                                           "
 "============================================================================"
 
-uncompress = 1 ifTrue: [
-    | filename infile stdinBits theNextBit theNextByte |
+(uncompress = 1) ifTrue: [
+    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree |
 
     theNextBit := 0.
-    theNextByte := 0.
-
+    theStack := Stack new: 1000.
     " Open the file "
+
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
     stdinBits := BitStream new: infile.
 
     [stdinBits atEnd] whileFalse: [
+        " Reset the byte "
+        theNextByte := 0.
         " Read one bit. "
         theNextBit := stdinBits nextBit.
-
         " If it is a 0... "
         theNextBit = 0 ifTrue: [
             " ... read the next 8 bits and reconstruct the byte,
               giving a value from 0 to 255.
             "
-            1 to: 8 by: 1 do: [ :i |
-                i display.
-                ': ' display.
+            8 to: 1 by: -1 do: [ :i |
                 theNextBit := (stdinBits nextBit).
-                theNextBit display.
-                '; ' display.
-                theNextByte bitAt: i put: (theNextBit asInteger).
-                theNextByte displayNl.
+                theNextByte := theNextByte bitAt: i put: theNextBit.
             ].
 
             '!!!' displayNl.
+            " Then push this byte onto a stack. "
+            theStack push: theNextByte.
+        " If it is a 1, pop the 1-subtree from the stack, then pop the
+          0-subtree from the stack, and create a new tree with both of
+          those children and push the new tree back on the stack. "
+        ] ifFalse: [
+            oneSubtree := theStack pop.
+            zeroSubtree := theStack pop.
+
+            newTree :=
+                Tree new: '0' count: 0 left: zero-subtree right: one-subtree.
+
+            theStack push: newTree.
         ].
 
-
     ].
+
 ].
 
