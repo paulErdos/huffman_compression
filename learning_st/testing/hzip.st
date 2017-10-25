@@ -549,12 +549,11 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
-    writeBitArray value: outfile value: outputstring.
+    " Debug "
+    outputstring displayNl.
 
-    outputstring := ''.
 
-
-"=== 3f ====================================================================="
+"=== 3h ====================================================================="
 
     " Reopen the file... "
     filename := Smalltalk arguments at: 2.
@@ -565,10 +564,19 @@ writeBitArray := [:outfile :outstring|
         ordChar := infile next asInteger.
 
         outputstring := outputstring, (encoding_table_ at: ordChar).
+
+        " Debug "
+        outputstring displayNl.
+
     ].
 
     " Add EOF marker "
     outputstring := outputstring, (encoding_table_ at: 256).
+
+
+    " Debug "
+    outputstring displayNl.
+
 
     " Pad with zeroes out to a byte boundary, if needed. "
     n_remainingbits := (8 - (outputstring size) \\ 8).
@@ -576,7 +584,15 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, '0'.
     ].
 
+
+    " Debug "
+    outputstring displayNl.
+
+
     writeBitArray value: outfile value: outputstring.
+
+    " Debug "
+    outputstring displayNl.
 
     outfile close.
 ].
@@ -587,75 +603,39 @@ writeBitArray := [:outfile :outstring|
 "============================================================================"
 
 uncompress = 1 ifTrue: [
-    | filename infile stdinBits theNextBit count readNextNode number |
+    | filename infile stdinBits theNextBit theNextByte |
+
+    theNextBit := 0.
+    theNextByte := 0.
+
+    " Open the file "
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
     stdinBits := BitStream new: infile.
 
-
-    count := 0.
-    number := 0.
-    theNextBit := 0.
-    readNextNode := 1.
-
     [stdinBits atEnd] whileFalse: [
-        readNextNode = 1 ifTrue: [
-            theNextBit := stdinBits nextBit.
-            stdout << theNextBit.
-        ].
-
-        theNextBit = 0 ifTrue: [
-            readLeaf := 1.
-            assembleTree := 0.
-        ] ifFalse: [
-            readLeaf := 0.
-            assembleTree := 1.
-        ].
-
-        readLeaf = 1 ifTrue: [
-            stdinBits atEnd ifTrue: [
-                count := count + 1.
-                theNextBit := stdinBits nextBit.
-                stdout << theNextBit asInt.
-                number := number bitAt: count put: theNextBit.
-
-                count = 8 ifTrue: [
-                    " Push number onto stack. "
-                    number := 0.
-                    count := 0.
-                    readNextNode := 1.
-                ].
-            ].
-        ].
-
-"        assembleTree = 1 ifTrue: ["
-            " Pop the 1 subtree off of the stack. "
-            " Pop the 0 subtree off of the stack. "
-            " Create a new tree with both of these as children... "
-            " ... and push this new tree back on the stack. "
-"        ]"
-    ].
-
-    " Sanity check. "
-    " Pop off of the stack. "
-    " If stack isn't empty, scream at stderr and die. "
-"
-    count := 0.
-    [stdinBits atEnd] whileFalse: [
-        "" Read one bit. ""
+        " Read one bit. "
         theNextBit := stdinBits nextBit.
 
-       "" If it is a 0... ""
+        " If it is a 0... "
         theNextBit = 0 ifTrue: [
-            .
-        ]
-       stdout << stdinBits nextBit.
-       count := count + 1.
-       count = 4 ifTrue: [stdout << ' '].
-       count = 8 ifTrue: [
-          stdout << ' ' << stdinBits currByte visible << nl.
-          count := 0
-       ].
-    ]
-"
+            " ... read the next 8 bits and reconstruct the byte,
+              giving a value from 0 to 255.
+            "
+            1 to: 8 by: 1 do: [ :i |
+                i display.
+                ': ' display.
+                theNextBit := (stdinBits nextBit).
+                theNextBit display.
+                '; ' display.
+                theNextByte bitAt: i put: (theNextBit asInteger).
+                theNextByte displayNl.
+            ].
+
+            '!!!' displayNl.
+        ].
+
+
+    ].
 ].
+
