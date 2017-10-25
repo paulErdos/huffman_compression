@@ -561,7 +561,7 @@ writeBitArray := [:outfile :outstring|
 
     " Reopen the file... "
 
-"
+
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
 
@@ -571,18 +571,18 @@ writeBitArray := [:outfile :outstring|
         ordChar := infile next asInteger.
 
         outputstring := outputstring, (encoding_table_ at: ordChar).
-"
+
 
         "outfile << (encoding_table_ at: ordChar)."
 
-"
+
         n_writtenbits := n_writtenbits + 1.
     ].
-"
+
 
     " The error is here. 255 instead of 256 uncauses the error. "
 
-"
+
     outputstring := outputstring, (encoding_table_ at: 256).
     n_writtenbits := n_writtenbits + 1.
 
@@ -595,8 +595,6 @@ writeBitArray := [:outfile :outstring|
     writeBitArray value: outfile value: outputstring.
 
     outfile close.
-"
-
 ].
 
 
