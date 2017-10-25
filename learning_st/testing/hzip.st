@@ -51,12 +51,7 @@ Object subclass: Leaf [
 
         " ... followed by the eight bits of the corresponding byte. "
         8 to: 1 by: -1 do: [:x |
-            (char asInteger) displayNl.
-
             nextBit := (((char asInteger) bitAt: x) asString).
-
-            nextBit displayNl.
-
             leafcontents := leafcontents, nextBit.
         ].
 
@@ -113,6 +108,9 @@ Leaf subclass: Tree [
     postorder: visitor prefix: string [
         left postorder: visitor prefix: string.
         right postorder: visitor prefix: string.
+
+"=== 3g. ============================================================"
+        " For each interior node, write out a 1 bit. "
         visitor value: '1'.
 
     ]
@@ -482,7 +480,7 @@ hufmann_t := sortcol_ removeFirst.
 (sortcol_ removeFirst) inspect.
 "
 encoding_table := SortedCollection new.
-encoding_table_ := ZeroArray new: 256.
+encoding_table_ := ZeroArray new: 257.
 
 
 "=== 3d. ====================================================================="
@@ -540,7 +538,7 @@ writeBitArray := [:outfile :outstring|
 "=== 3f ====================================================================="
 
 (compress = 1) ifTrue: [
-    " 3f. If the -t option is not specified, write out the encoding "
+    " If the -t option is not specified, write out the encoding "
     " table as follows. "
 
     " Perform a postorder traversal of the encoding tree... "
@@ -551,45 +549,29 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
-    " Debug "
-    outputstring displayNl.
-
     writeBitArray value: outfile value: outputstring.
-
 
     outputstring := ''.
 
+
+"=== 3f ====================================================================="
+
     " Reopen the file... "
-
-
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
 
-    n_writtenbits := 0.
     [infile atEnd not] whileTrue: [
         |ordChar|
         ordChar := infile next asInteger.
 
-        (ordChar asString) displayNl.
-
         outputstring := outputstring, (encoding_table_ at: ordChar).
-
-
-        "outfile << (encoding_table_ at: ordChar)."
-
-
-        n_writtenbits := n_writtenbits + 1.
     ].
 
-
-    " The error is here. 255 instead of 256 uncauses the error. "
-
-
+    " Add EOF marker "
     outputstring := outputstring, (encoding_table_ at: 256).
-    n_writtenbits := n_writtenbits + 1.
 
-    n_remainingbits := n_writtenbits \\ 8.
-
+    " Pad with zeroes out to a byte boundary, if needed. "
+    n_remainingbits := (8 - (outputstring size) \\ 8).
     n_remainingbits to: 1 by: -1 do: [ :i |
         outputstring := outputstring, '0'.
     ].
@@ -600,9 +582,9 @@ writeBitArray := [:outfile :outstring|
 ].
 
 
-
-" 4. Decompression "
-
+"============================================================================"
+" 4. Decompression                                                           "
+"============================================================================"
 
 uncompress = 1 ifTrue: [
     | filename infile stdinBits theNextBit count readNextNode number |
