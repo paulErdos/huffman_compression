@@ -570,6 +570,8 @@ writeBitArray := [:outfile :outstring|
         |ordChar|
         ordChar := infile next asInteger.
 
+        (ordChar asString) displayNl.
+
         outputstring := outputstring, (encoding_table_ at: ordChar).
 
 
