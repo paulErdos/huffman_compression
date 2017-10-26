@@ -1,0 +1,11 @@
+Object: '' error: Invalid argument <16r0080>: argument must be between $<0> and $<16r00FF>
+SystemExceptions.ArgumentOutOfRange(Exception)>>signal (ExcHandling.st:254)
+SystemExceptions.ArgumentOutOfRange(Exception)>>signal: (ExcHandling.st:264)
+SystemExceptions.ArgumentOutOfRange class>>signalOn:mustBeBetween:and: (SysExcept.st:601)
+String(Object)>>checkIndexableBounds:put: (Object.st:831)
+String>>at:put: (String.st:329)
+String class(ArrayedCollection class)>>with: (ArrayColl.st:85)
+UnicodeCharacter(Character)>>asString (Character.st:417)
+optimized [] in UndefinedObject>>executeStatements (hzip.st:741)
+True>>ifTrue: (True.st:64)
+UndefinedObject>>executeStatements (hzip.st:645)
