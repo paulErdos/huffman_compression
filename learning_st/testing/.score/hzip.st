@@ -643,12 +643,13 @@ hufmann_t inorder: [:char :string |
 "============================================================================"
 
 (uncompress = 1) ifTrue: [
-    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree outputstring |
+    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree outputstring outBytes |
 
     theNextBit := 0.
     theStack := Stack new: 1000.
     doneReadingTree := 0.
     outputstring := ''.
+    outBytes := OutBits new: outfile.
     " Open the file "
 
     filename := Smalltalk arguments at: 2.
@@ -730,23 +731,25 @@ hufmann_t inorder: [:char :string |
             (treePointer isLeaf) ifTrue: [
                 " Write out the corresponding byte... "
                 ((treePointer char) asInteger) = 256 ifTrue: [
-                    " Then we're done. "
 
-                    outfile nextPutAll: outputstring.
+"                    outfile nextPutAll: outputstring."
+                    writeBitArray value: outfile value: outputstring.
                     outfile flush.
                     outfile close.
                     ObjectMemory quit: 0.
 
                 ].
 
-                outputstring := outputstring, ((treePointer char) asString).
-
+"                outfile << (treePointer char)."
+"                (treePointer char) displayNl."
+                8 to: 1 by: -1 do: [ :i |
+                    outputstring := outputstring, ((treePointer char asInteger bitAt: i) asString).
+                ].
                 "... and reset the pointer back to the root of the tree. "
                 treePointer := theDecodingTree.
             ].
 
         ].
     ].
-
 ].
 
