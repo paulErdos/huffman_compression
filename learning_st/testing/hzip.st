@@ -405,6 +405,13 @@ valid_option ifFalse: [
 " Debug information is printed for the benefit of the application author. "
 (opt sameAs: '-d') ifTrue: [ debug := 1. ].
 
+writeBitArray := [:outfile :outstring|
+   |outBytes|
+   outBytes := OutBits new: outfile.
+   outstring do: [:bit| outBytes writeBit: bit].
+   outBytes flushByte.
+].
+
 
 "============================================================================"
 " 3. Compression                                                             "
@@ -533,13 +540,6 @@ hufmann_t inorder: [:char :string |
 
 "=== 3e. ===CHECKED==========================================================="
 
-writeBitArray := [:outfile :outstring|
-   |outBytes|
-   outBytes := OutBits new: outfile.
-   outstring do: [:bit| outBytes writeBit: bit].
-   outBytes flushByte.
-].
-
 " If the -t option is specified ... "
 (print_table = 1) ifTrue: [
     " ... write out the encoding table sorted by character. "
@@ -631,11 +631,12 @@ writeBitArray := [:outfile :outstring|
 "============================================================================"
 
 (uncompress = 1) ifTrue: [
-    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree |
+    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree outputstring |
 
     theNextBit := 0.
     theStack := Stack new: 1000.
     doneReadingTree := 0.
+    outputstring := ''.
     " Open the file "
 
     filename := Smalltalk arguments at: 2.
@@ -715,9 +716,15 @@ writeBitArray := [:outfile :outstring|
             " If this node is a leaf... "
             (treePointer isLeaf) ifTrue: [
                 " Write out the corresponding byte... "
-                
-                " Debug "
-                (treePointer char) displayNl.
+                ((treePointer char) asInteger) = 256 ifTrue: [
+                    " Then we're done. "
+                    writeBitArray value: outfile value: outputstring.
+                    outfile close.
+                    ObjectMemory quit: 0.
+
+                ].
+
+                outputstring := outputstring, ((treePointer char) asString).
 
                 "... and reset the pointer back to the root of the tree. "
                 treePointer := theDecodingTree.
