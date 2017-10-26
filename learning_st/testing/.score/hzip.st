@@ -719,13 +719,15 @@ hufmann_t inorder: [:char :string |
 
             " ...and use it to move down the 0-link or the 1-link to
               the child of the current node. "
-            (treePointer isLeaf) ifFalse: [
+            (treePointer isTree) ifTrue: [
                 (theNextBit = 0) ifTrue: [
                     treePointer := (treePointer left). 
                 ] ifFalse: [
                     treePointer := (treePointer right).
                 ].
-            ] ifTrue: [
+            ].
+            " If this node is a leaf... "
+            (treePointer isLeaf) ifTrue: [
                 " Write out the corresponding byte... "
                 ((treePointer char) asInteger) = 256 ifTrue: [
                     " Then we're done. "
