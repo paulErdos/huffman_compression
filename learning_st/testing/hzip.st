@@ -704,9 +704,6 @@ writeBitArray := [:outfile :outstring|
             " Read a single bit... "
             theNextBit := (stdinBits nextBit).
 
-            " Debug "
-            treePointer displayNl.
-
             " ...and use it to move down the 0-link or the 1-link to
               the child of the current node. "
             (theNextBit = 0) ifTrue: [
