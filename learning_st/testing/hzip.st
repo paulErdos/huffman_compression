@@ -718,7 +718,9 @@ hufmann_t inorder: [:char :string |
                 " Write out the corresponding byte... "
                 ((treePointer char) asInteger) = 256 ifTrue: [
                     " Then we're done. "
-                    writeBitArray value: outfile value: outputstring.
+
+                    outfile nextPutAll: outputstring.
+                    outfile flush.
                     outfile close.
                     ObjectMemory quit: 0.
 
