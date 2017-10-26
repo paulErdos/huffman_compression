@@ -10,6 +10,8 @@ Object subclass: Leaf [
    |char count|
    char [ ^ char ]
    count [ ^ count ]
+   isTree [ ^ false ]
+   isLeaf [ ^ true ]
 
    Leaf class >> new [
       self shouldNotImplement
@@ -74,6 +76,11 @@ Object subclass: Leaf [
 
 Leaf subclass: Tree [
    |left right|
+
+   left [ ^ left ]
+   right [ ^ right ]
+   isTree [ ^ true ]
+   isLeaf [ ^ false ]
 
    Tree class >> new: aChar count: aCount [
       self shouldNotImplement
@@ -281,17 +288,21 @@ Object subclass: Stack [
 
     init: size [
         theArray := Array new: size.
-        theIndex := 1.
+        theIndex := 0.
     ]
 
     push: value [
-        theArray at: theIndex put: value.
         theIndex := theIndex + 1.
+        theArray at: theIndex put: value.
     ]
 
     pop [
         theIndex := theIndex - 1.
         ^ theArray at: (theIndex + 1).
+    ]
+
+    isEmpty [
+        ^ (theIndex = 0).
     ]
 ]
 
@@ -579,6 +590,13 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, nodeType.
     ] prefix: ''.
 
+    " From Piazza: write an extra 1 after you finish writing your
+      tree to the file to indicate during reconstruction of the
+      tree to indicate the border between tree code and ciphertext"
+    outputstring := outputstring, '1'.
+
+    outputstring displayNl.
+
 "=== 3h ====================================================================="
 
     " Reopen the file... "
@@ -601,6 +619,7 @@ writeBitArray := [:outfile :outstring|
         outputstring := outputstring, '0'.
     ].
 
+
     writeBitArray value: outfile value: outputstring.
 
     outfile close.
@@ -612,10 +631,11 @@ writeBitArray := [:outfile :outstring|
 "============================================================================"
 
 (uncompress = 1) ifTrue: [
-    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree |
+    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree |
 
     theNextBit := 0.
     theStack := Stack new: 1000.
+    doneReadingTree := 0.
     " Open the file "
 
     filename := Smalltalk arguments at: 2.
@@ -623,36 +643,90 @@ writeBitArray := [:outfile :outstring|
     stdinBits := BitStream new: infile.
 
     [stdinBits atEnd] whileFalse: [
-        " Reset the byte "
-        theNextByte := 0.
-        " Read one bit. "
-        theNextBit := stdinBits nextBit.
-        " If it is a 0... "
-        theNextBit = 0 ifTrue: [
-            " ... read the next 8 bits and reconstruct the byte,
-              giving a value from 0 to 255.
-            "
-            8 to: 1 by: -1 do: [ :i |
-                theNextBit := (stdinBits nextBit).
-                theNextByte := theNextByte bitAt: i put: theNextBit.
+        (doneReadingTree = 0) ifTrue: [
+            " Reset the byte "
+            theNextByte := 0.
+
+            " Read one bit. "
+            theNextBit := stdinBits nextBit.
+
+            " If it is a 0... "
+            theNextBit = 0 ifTrue: [
+                " ... read the next 8 bits and reconstruct the byte,
+                  giving a value from 0 to 255."
+                8 to: 1 by: -1 do: [ :i |
+                    theNextBit := (stdinBits nextBit).
+                    theNextByte := theNextByte bitAt: i put: theNextBit.
+                ].
+
+                " If the value is 0... "
+                (theNextByte = 0) ifTrue: [
+                    " ... read one more bit... "
+                    theNextBit := (stdinBits nextBit).
+
+                    " ... and if it is a 1... "
+                    (theNextBit = 1) ifTrue: [
+                        " ...add 256 to the byte, giving the encoding
+                          for EOF"
+                        theNextByte := theNextByte + 256.
+                    ]
+                ].
+
+                " Then push this byte onto a stack. "
+                theStack push: (Leaf new: (theNextByte asCharacter) count: 0).
+
+            " If it is a 1, pop the 1-subtree from the stack, then pop the
+              0-subtree from the stack, and create a new tree with both of
+              those children and push the new tree back on the stack. "
+            ] ifFalse: [
+                " When the stack is empty, there is only one tree left,
+                  the decoding tree. "
+                oneSubtree := theStack pop.
+
+                (theStack isEmpty) ifTrue: [
+                    doneReadingTree := 1.
+                    " Now loop over the rest of the input file to
+                      reconstruct the original file: initialize a pointer to
+                      the root of the decoding tree. "
+                    theDecodingTree := oneSubtree.
+                    treePointer := theDecodingTree.
+                ].
+
+                (doneReadingTree = 0) ifTrue: [
+                    zeroSubtree := theStack pop.
+
+                    newTree := Tree new: '0' count: 0 left: zeroSubtree right: oneSubtree.
+
+                    theStack push: newTree.
+                ].
+            ].
+        ] ifFalse: [
+            " Read a single bit... "
+            theNextBit := (stdinBits nextBit).
+
+            " Debug "
+            treePointer displayNl.
+
+            " ...and use it to move down the 0-link or the 1-link to
+              the child of the current node. "
+            (theNextBit = 0) ifTrue: [
+                treePointer := (treePointer left). 
+            ] ifFalse: [
+                treePointer := (treePointer right).
             ].
 
-            '!!!' displayNl.
-            " Then push this byte onto a stack. "
-            theStack push: theNextByte.
-        " If it is a 1, pop the 1-subtree from the stack, then pop the
-          0-subtree from the stack, and create a new tree with both of
-          those children and push the new tree back on the stack. "
-        ] ifFalse: [
-            oneSubtree := theStack pop.
-            zeroSubtree := theStack pop.
+            " If this node is a leaf... "
+            (treePointer isLeaf) ifTrue: [
+                " Write out the corresponding byte... "
+                
+                " Debug "
+                (treePointer char) displayNl.
 
-            newTree :=
-                Tree new: '0' count: 0 left: zero-subtree right: one-subtree.
+                "... and reset the pointer back to the root of the tree. "
+                treePointer := theDecodingTree.
+            ].
 
-            theStack push: newTree.
         ].
-
     ].
 
 ].
