@@ -1,5 +1,7 @@
 #!/usr/bin/bash
 
+clear
+
 cp ../hzip.st .;
 
 ./mk.tests; 
@@ -12,3 +14,5 @@ done
 
 echo "Test5: frequency table."
 diff test5.frequencies Sample-test5-output
+
+/afs/cats.ucsc.edu/courses/cmps104a-wm/bin/checksource hzip.st 

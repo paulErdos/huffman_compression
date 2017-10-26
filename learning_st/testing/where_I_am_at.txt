@@ -1,4 +1,0 @@
-What is the data type of Smalltalk arguments? If I want to check these arguments
-in the future, how do I do so?
-
-What is going on between lines 33-43?

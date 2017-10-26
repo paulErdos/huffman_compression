@@ -1,10 +1,152 @@
 #!/afs/cats.ucsc.edu/courses/cmps112-wm/usr/smalltalk/bin/gst -f
 
+"====================================================================="
+" Dear grader:                                                        "
+"====================================================================="
+
+"
+Author: Vincent Steffens
+ID:     1388341
+Email:  vsteffen@ucsc.edu
+"
+
+"
+Code to handle options word . . . . . . . . . . . . . . . Line 58+
+
+Class BitStream . . . . . . . . . . . . . . . . . . . . . Line 382+
+
+Code to build Hufmann tree  . . . . . . . . . . . . . . . Line 513+
+
+Code to output the tree into a file . . . . . . . . . . . Line 627+
+
+Code to read the tree from a file . . . . . . . . . . . . Line 701+
+
+Code to compress a file and write it  . . . . . . . . . . Line 650+
+
+Code to uncompress a file and write it  . . . . . . . . . Line 680+
+
+Error messages printed to stderr when something fails . . Lines:
+* 40, 44, 63, 87, 88, 109, 110, 123.
+
+"
+
+"====================================================================="
+" Verify program called correctly.                                    "
+"====================================================================="
+
+" Check for proper number of arguments "
+argsize := Smalltalk arguments size.
+argsize < 2 ifTrue: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+argsize > 3 ifTrue: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+
+
+"====================================================================="
+" Initialize program state.                                           "
+"====================================================================="
+
+" Variable declarations "
+|outfile|
+outfile := stdout.
 nl := Character nl.
 
-"============================================================================"
-" Object editing                                                             "
-"============================================================================"
+" Parse command line arguments "
+opt := Smalltalk arguments at: 1.
+valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
+                (opt sameAs: '-t') | (opt sameAs: '-d').
+valid_option ifFalse: [
+    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
+    ObjectMemory quit: 1.
+].
+
+
+"====================================================================="
+" Set up configuration based on arguments.                            "
+"====================================================================="
+
+"The input file is compressed... "
+(opt sameAs: '-c') ifTrue: [
+    compress := 1.
+
+    "... and written to the output file, if specified ... "
+    (Smalltalk arguments size) = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile :=
+                FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
+].
+
+
+" The input file is assumed to be compressed... "
+(opt sameAs: '-u') ifTrue: [
+    uncompress := 1.
+
+    "... and written to the output file, if specified ... "
+    Smalltalk arguments size = 3 ifTrue: [
+        |outfilename|
+        outfilename := Smalltalk arguments at: 3.
+        [
+            outfile :=
+                FileStream open: outfilename mode: FileStream write.
+        ] on: SystemExceptions.FileError do: [:signal |
+            |errno|
+            errno := File errno.
+            stdout flush.
+            stderr << 'Error: ' << signal messageText << nl.
+            stderr flush.
+        ]
+    ]
+].
+
+
+" The compression algorith is activated "
+(opt sameAs: '-t') ifTrue: [
+    (Smalltalk arguments size) = 2 ifTrue: [
+        " And the decoding tree is printed to the stanadard output. "
+        print_table := 1.
+    ] ifFalse: [
+        " The output filename may not be specified. "
+        stderr << 
+            'Error: Output file may not be specified with -t option.'
+             << nl.
+        ObjectMemory quit: 1.
+    ].
+].
+
+
+" Debug information is printed for the benefit of the author. "
+(opt sameAs: '-d') ifTrue: [ debug := 1. ].
+
+
+"====================================================================="
+" Function definition                                                 "
+"====================================================================="
+
+writeBitArray := [:outfile :outstring|
+   |outBytes|
+   outBytes := OutBits new: outfile.
+   outstring do: [:bit| outBytes writeBit: bit].
+   outBytes flushByte.
+].
+
+
+"====================================================================="
+" Object editing                                                      "
+"====================================================================="
 
 Object subclass: Leaf [
    |char count|
@@ -57,9 +199,9 @@ Object subclass: Leaf [
             leafcontents := leafcontents, nextBit.
         ].
 
-        " As a special case, if the byte is 0, write out bit 8, which will be
-          a 0 for a byte value of 0, and a 1 for a byte value of 256 (the
-          EOF marker).
+        " As a special case, if the byte is 0, write out bit 8, which 
+          will be a 0 for a byte value of 0, and a 1 for a byte value
+          of 256 (the EOF marker).
         "
         (char asInteger) = 256 ifTrue: [
             leafcontents := leafcontents, '1'.
@@ -199,13 +341,6 @@ Object subclass: Encoding [
        ^ (char < other char)
        | ((char = other char) & (string <= other string))
     ]
-"
-    <= other [
-        char = other char
-            ifTrue: [^ string <= other string]
-            ifFalse: [^ char <= other char ].
-    ]
-"
 
     printOn: aStream [
         ^ aStream << '[' << char << '] = ' << string << Character nl.
@@ -307,121 +442,16 @@ Object subclass: Stack [
 ]
 
 
-"============================================================================"
-" Verify program called correctly.                                           "
-"============================================================================"
+"====================================================================="
+" 3. Compression                                                      "
+"====================================================================="
 
-" Variable declarations "
+" The compression algorithm reads the file twice. Once to construct 
+  the encoding tree, and if the -c rather than the -t option is
+  specified, a second time to perform the compression. It proceeds as
+  follows: "
 
-|outfile|
-outfile := stdout.
-
-
-" Check for proper number of arguments "
-
-argsize := Smalltalk arguments size.
-argsize < 2 ifTrue: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-argsize > 3 ifTrue: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-
-"============================================================================"
-" Initialize program state.                                                  "
-"============================================================================"
-
-" Parse command line arguments "
-opt := Smalltalk arguments at: 1.
-valid_option := (opt sameAs: '-c') | (opt sameAs: '-u') |
-                (opt sameAs: '-t') | (opt sameAs: '-d').
-valid_option ifFalse: [
-    stderr << 'Usage: hzip.st -dctu inputfile [outputfile]' << nl.
-    ObjectMemory quit: 1.
-].
-
-
-"============================================================================"
-" Set up configuration based on arguments.                                   "
-"============================================================================"
-
-"The input file is compressed... "
-(opt sameAs: '-c') ifTrue: [
-    compress := 1.
-
-    "... and written to the output file, if specified ... "
-    (Smalltalk arguments size) = 3 ifTrue: [
-        |outfilename|
-        outfilename := Smalltalk arguments at: 3.
-        [
-            outfile := FileStream open: outfilename mode: FileStream write.
-        ] on: SystemExceptions.FileError do: [:signal |
-            |errno|
-            errno := File errno.
-            stdout flush.
-            stderr << 'Error: ' << signal messageText << nl.
-            stderr flush.
-        ]
-    ]
-].
-
-
-" The input file is assumed to be compressed... "
-(opt sameAs: '-u') ifTrue: [
-    uncompress := 1.
-
-    "... and written to the output file, if specified ... "
-    Smalltalk arguments size = 3 ifTrue: [
-        |outfilename|
-        outfilename := Smalltalk arguments at: 3.
-        [
-            outfile := FileStream open: outfilename mode: FileStream write.
-        ] on: SystemExceptions.FileError do: [:signal |
-            |errno|
-            errno := File errno.
-            stdout flush.
-            stderr << 'Error: ' << signal messageText << nl.
-            stderr flush.
-        ]
-    ]
-].
-
-" The compression algorith is activated "
-(opt sameAs: '-t') ifTrue: [
-    (Smalltalk arguments size) = 2 ifTrue: [
-        " And the decoding tree is printed to the stanadard output. "
-        print_table := 1.
-    ] ifFalse: [
-        " The output filename may not be specified. "
-        stderr << 'Error: Output file may not be specified with -t option.'
-               << nl.
-        ObjectMemory quit: 1.
-    ].
-].
-
-
-" Debug information is printed for the benefit of the application author. "
-(opt sameAs: '-d') ifTrue: [ debug := 1. ].
-
-writeBitArray := [:outfile :outstring|
-   |outBytes|
-   outBytes := OutBits new: outfile.
-   outstring do: [:bit| outBytes writeBit: bit].
-   outBytes flushByte.
-].
-
-
-"============================================================================"
-" 3. Compression                                                             "
-"============================================================================"
-
-" The compression algorithm reads the file twice. Once to construct the
-  encoding tree, and if the -c rather than the -t option is specified, a
-  second time to perform the compression. It proceeds as follows: "
-
-"=== 3a ====================================================================="
+"=== 3a =============================================================="
 
 " Read in the input file and create a frequency table... "
 freqtable := ZeroArray new: 257.
@@ -432,38 +462,41 @@ infile := FileStream open: filename mode: FileStream read.
     |ordChar|
     ordChar := infile next asInteger.
 
-    " ... counting the number of times each character appears on input. "
+    " ... counting the number of times each character appears on
+      input. "
     freqtable incr: ordChar.
 ].
 
-" Possible error? "
-" Add entry 256 with a count of 1 to indicate EoF. "
+" Add entry 256 with a count of 1 to indicate EOF. "
 freqtable at: 256 put: 1.
 
 " Debug: print the frequency table"
 (debug = 1) ifTrue: [
    freqtable keysAndValuesDo: [:key :value |
       (value notNil and: [value > 0]) ifTrue: [
-         outfile << 'freq[' << key asCharacter visible << '] = ' << value << nl.
+         outfile << 'freq[' <<
+            key asCharacter visible << '] = ' << value << nl.
       ]
    ].
 ].
 
 
-"=== 3b ====================================================================="
+"=== 3b =============================================================="
 
 sortcol := SortedCollection new.
 sortcol_copy := SortedCollection new.
 
 " Iterate over the frequency table... "
 freqtable keysAndValuesDo: [:key :value |
+
     " ... and for each nonzero element ... "
     (value notNil and: [value > 0]) ifTrue: [
+
         " ... create a leaf node ... "
         l := Leaf new: key asCharacter count: value.
+
         " ... and insert that node into a priority queue. """
         sortcol add: l.
-
         sortcol_copy add: l.
     ]
 ].
@@ -477,7 +510,7 @@ freqtable keysAndValuesDo: [:key :value |
     outfile << ''.
 ].
 
-"=== 3c ====================================================================="
+"=== 3c =============================================================="
 
 sortcol_ := SortedCollection new.
 
@@ -485,21 +518,18 @@ sortcol_ := SortedCollection new.
 [sortcol notEmpty] whileTrue: [
    |first second left right character count|
 
-    " ... remove the two ... "
+    " ... remove ... "
     first := sortcol removeFirst.
-
     (sortcol isEmpty) ifFalse: [
-        " ... two smallest element in the priority queue ... "
+        " ... the two smallest element in the priority queue ... "
         second := sortcol removeFirst.
 
-      " ... creating a new tree ... "
       " The smaller tree or leaf becomes the left child... "
       (first <= second) ifTrue: [
            left := first.
            " ... and the larger the right child. "
            right := second.
-      ]
-      ifFalse: [
+      ] ifFalse: [
            left := second.
            right := first.
       ].
@@ -507,50 +537,51 @@ sortcol_ := SortedCollection new.
       " The character in the new tree is the left child's character. "
       character := left char.
 
-      " And I assume this means that the count becomes the left child's char's
-        count.
-      "
+      " And the count in the new tree is the sum of the frequencies
+        of its children. "
       count := left count + right count.
 
+      " ... creating a new tree ... "
       t := Tree new: character count: count left: left right: right.
 
+      " ... which is then entered into the priority queue. "
       sortcol add: t.
-   ]
-   ifTrue: [
+   ] ifTrue: [
+      " This process stops when there is only one tree left and the
+        priority queue is empty. "
       sortcol_ add: first.
    ].
 ].
 
-"sortcol_ inspect."
 hufmann_t := sortcol_ removeFirst.
-"hufmann_t inspect."
-"
-(sortcol_ removeFirst) inspect.
-"
 encoding_table := SortedCollection new.
 encoding_table_ := ZeroArray new: 257.
 
 
-"=== 3d. ====================================================================="
+"=== 3d. ============================================================="
 
+" For each character that has appeared as non-zero in the frequency
+  table, construct an encoding string, using a depth-first traversal."
 hufmann_t inorder: [:char :string |
     encoding_table add: (Encoding new: char string: string).
     encoding_table_ at: (char asInteger) put: string.
 ] prefix: ''.
 
-"=== 3e. ===CHECKED==========================================================="
+
+"=== 3e. ===MANUALLY=CHECKED=========================================="
 
 " If the -t option is specified ... "
 (print_table = 1) ifTrue: [
+
     " ... write out the encoding table sorted by character. "
     1 to: (encoding_table size) do: [ :i |
         | thisChar |
-
         thisChar := (encoding_table at: i) char.
 
         " The first column is a single integer, if printable... "
-        ((32 < (thisChar asInteger)) and: [(thisChar asInteger) < 127]) ifTrue: [
-            outfile << ' ' << thisChar << '    '.
+        ((32 < (thisChar asInteger)) and: 
+            [(thisChar asInteger) < 127]) ifTrue: [
+                outfile << ' ' << thisChar << '    '.
         ] ifFalse: [
 
             " Or an integer if not. "
@@ -570,10 +601,14 @@ hufmann_t inorder: [:char :string |
         ].
 
         " The second column is the frequency for that character. "
-        (freqtable at: (thisChar asInteger)) < 10000 ifTrue: [ outfile << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 1000 ifTrue: [ outfile << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 100 ifTrue: [ outfile << ' '. ].
-        (freqtable at: (thisChar asInteger)) < 10 ifTrue: [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 10000 ifTrue: 
+            [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 1000 ifTrue: 
+            [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 100 ifTrue: 
+            [ outfile << ' '. ].
+        (freqtable at: (thisChar asInteger)) < 10 ifTrue: 
+            [ outfile << ' '. ].
         (freqtable at: (thisChar asInteger)) display.
         outfile << '  '.
 
@@ -589,16 +624,15 @@ hufmann_t inorder: [:char :string |
 ].
 
 
-"=== 3f ====================================================================="
+"=== 3f =============================================================="
 
+" If the -t option is not specified... "
 (compress = 1) ifTrue: [
-    " If the -t option is not specified, write out the encoding "
-    " table as follows. "
-
-    " Perform a postorder traversal of the encoding tree... "
     | n_writtenbits n_remainingbits outputstring |
-    outputstring := ''.
 
+    " ... write out the encoding table as follows: Perform a 
+      postorder traversal of the encoding tree... "
+    outputstring := ''.
     hufmann_t postorder: [:nodeType  |
         outputstring := outputstring, nodeType.
     ] prefix: ''.
@@ -609,7 +643,11 @@ hufmann_t inorder: [:char :string |
     outputstring := outputstring, '1'.
 
 
-"=== 3h ====================================================================="
+"=== 3g =============================================================="
+" Please refer to line 232 for part 3g."
+
+
+"=== 3h =============================================================="
 
     " Reopen the file... "
     filename := Smalltalk arguments at: 2.
@@ -619,18 +657,19 @@ hufmann_t inorder: [:char :string |
         |ordChar|
         ordChar := infile next asInteger.
 
+        " ... and write out the encoded version of each byte. "
         outputstring := outputstring, (encoding_table_ at: ordChar).
     ].
 
-    " Add EOF marker "
+    " At the end of the buffer, write out the encoding string for
+      EOF. "
     outputstring := outputstring, (encoding_table_ at: 256).
 
-    " Pad with zeroes out to a byte boundary, if needed. "
+    " Then pad with zeroes out to a byte boundary, if needed. "
     n_remainingbits := (8 - (outputstring size) \\ 8).
     n_remainingbits to: 1 by: -1 do: [ :i |
         outputstring := outputstring, '0'.
     ].
-
 
     writeBitArray value: outfile value: outputstring.
 
@@ -638,20 +677,17 @@ hufmann_t inorder: [:char :string |
 ].
 
 
-"============================================================================"
-" 4. Decompression                                                           "
-"============================================================================"
+"====================================================================="
+" 4. Decompression                                                    "
+"====================================================================="
 
 (uncompress = 1) ifTrue: [
-    | filename infile stdinBits theNextBit theNextByte theStack oneSubtree zeroSubtree newTree doneReadingTree treePointer theDecodingTree outputstring outBytes |
 
     theNextBit := 0.
     theStack := Stack new: 1000.
     doneReadingTree := 0.
     outputstring := ''.
     outBytes := OutBits new: outfile.
-    " Open the file "
-
     filename := Smalltalk arguments at: 2.
     infile := FileStream open: filename mode: FileStream read.
     stdinBits := BitStream new: infile.
@@ -661,8 +697,14 @@ hufmann_t inorder: [:char :string |
             " Reset the byte "
             theNextByte := 0.
 
+
+"=== 4a =============================================================="
+
             " Read one bit. "
             theNextBit := stdinBits nextBit.
+
+
+"=== 4a =============================================================="
 
             " If it is a 0... "
             theNextBit = 0 ifTrue: [
@@ -670,7 +712,8 @@ hufmann_t inorder: [:char :string |
                   giving a value from 0 to 255."
                 8 to: 1 by: -1 do: [ :i |
                     theNextBit := (stdinBits nextBit).
-                    theNextByte := theNextByte bitAt: i put: theNextBit.
+                    theNextByte := 
+                        theNextByte bitAt: i put: theNextBit.
                 ].
 
                 " If the value is 0... "
@@ -681,40 +724,54 @@ hufmann_t inorder: [:char :string |
                     " ... and if it is a 1... "
                     (theNextBit = 1) ifTrue: [
                         " ...add 256 to the byte, giving the encoding
-                          for EOF"
+                          for EOF. "
                         theNextByte := theNextByte + 256.
                     ]
                 ].
 
                 " Then push this byte onto a stack. "
-                theStack push: (Leaf new: (theNextByte asCharacter) count: 0).
+                theStack push: 
+                    (Leaf new: (theNextByte asCharacter) count: 0).
 
-            " If it is a 1, pop the 1-subtree from the stack, then pop the
-              0-subtree from the stack, and create a new tree with both of
-              those children and push the new tree back on the stack. "
+
+"=== 4c,d,e =========================================================="
+
+            " If it is a 1... "
             ] ifFalse: [
-                " When the stack is empty, there is only one tree left,
-                  the decoding tree. "
+                " ... pop the 1-subtree from the stack... "
                 oneSubtree := theStack pop.
 
+                " When the stack is empty, there is only one tree left,
+                  the decoding tree. "
                 (theStack isEmpty) ifTrue: [
                     doneReadingTree := 1.
-                    " Now loop over the rest of the input file to
-                      reconstruct the original file: initialize a pointer to
-                      the root of the decoding tree. "
                     theDecodingTree := oneSubtree.
-                    treePointer := theDecodingTree.
-                ].
+
+                    " Now loop over the rest of the input file to 
+                      reconstruct the original file: Initialize a 
+                      pointer to the root of the decoding tree. "
+                   treePointer := theDecodingTree.
+                 ].
 
                 (doneReadingTree = 0) ifTrue: [
+                    " ... then pop the 0-subtree from the stack... "
                     zeroSubtree := theStack pop.
 
-                    newTree := Tree new: '0' count: 0 left: zeroSubtree right: oneSubtree.
+                    " ... and create a new tree with both of those
+                      children... "
+                    newTree := Tree new: '0' count: 0 left:
+                        zeroSubtree right: oneSubtree.
 
+                    " ... and push the new tree back on the stack. "
                     theStack push: newTree.
                 ].
             ].
-        ] ifFalse: [
+
+
+"=== 4f =============================================================="
+
+        ] ifFalse: [ " (doneReadingTree = 0) is false. "
+
             " Read a single bit... "
             theNextBit := (stdinBits nextBit).
 
@@ -727,27 +784,36 @@ hufmann_t inorder: [:char :string |
                     treePointer := (treePointer right).
                 ].
             ].
+
+
+"=== 4g =============================================================="
+
             " If this node is a leaf... "
             (treePointer isLeaf) ifTrue: [
-                " Write out the corresponding byte... "
-                ((treePointer char) asInteger) = 256 ifTrue: [
 
-"                    outfile nextPutAll: outputstring."
+                ((treePointer char) asInteger) = 256 ifTrue: [
                     writeBitArray value: outfile value: outputstring.
                     outfile flush.
                     outfile close.
                     ObjectMemory quit: 0.
-
                 ].
 
-"                outfile << (treePointer char)."
-"                (treePointer char) displayNl."
+                " ... write out the corresponding byte... "
                 8 to: 1 by: -1 do: [ :i |
-                    outputstring := outputstring, ((treePointer char asInteger bitAt: i) asString).
+                    outputstring :=
+                        outputstring, 
+                        ((treePointer char asInteger bitAt: i) 
+                        asString).
                 ].
-                "... and reset the pointer back to the root of the tree. "
+
+                " ... and reset the pointer back to the root of the
+                  tree. "
                 treePointer := theDecodingTree.
             ].
+
+
+"=== 4h =============================================================="
+        " If not, continue reading bits until you find a leaf. "
 
         ].
     ].
